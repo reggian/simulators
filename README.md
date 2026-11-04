@@ -7,7 +7,7 @@ behind at 4–9 GB each. Apple's tools (`xcrun simctl runtime`, `xcodebuild -dow
 manage them, but you have to list runtimes, work out which is which, copy an identifier and paste it
 into another command. `simulators` does that part for you.
 
-> **Status:** early development. Nothing below works yet.
+> **Status:** early development. Only `simulators list` (installed runtimes) works so far.
 
 ## Planned commands
 
@@ -25,7 +25,7 @@ $ simulators uninstall
 
  #  Runtime         Build      Size    Last used   Used by
  1  iOS 17.2        21C62      7.4 GB  today
- 2  iOS 27.0 b3     24A5289g   8.2 GB  never
+ 2  iOS 27.0 b3     24A5289g   8.2 GB  -
  3  iOS 27.0 b4     24A5298h   8.3 GB  today       Xcode 27 beta 4
 
 Select runtimes to uninstall (e.g. 1 3, 2-4, all): 2
