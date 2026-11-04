@@ -147,8 +147,7 @@ struct UninstallFlow {
         terminal.write("About to uninstall:")
         runtimes.forEach { terminal.write("  \(describe($0))") }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        let answer = terminal.readLine(prompt: "Uninstall \(count), freeing \(totalSize(of: runtimes))? [y/N] ")
-        return ["y", "yes"].contains(answer?.trimmingCharacters(in: .whitespaces).lowercased())
+        return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))?")
     }
 
     // MARK: Text
