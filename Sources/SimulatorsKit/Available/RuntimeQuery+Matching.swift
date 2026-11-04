@@ -5,12 +5,16 @@ extension RuntimeQuery {
     /// - A platform and version match that version's release builds, or its newest beta when it
     ///   has no release yet.
     /// - A platform alone matches its newest release (or newest beta, if it has no release at all).
+    /// - A platform, version and stage match the builds with that exact label: `beta` is the first
+    ///   beta, `beta 4` the fourth.
     public func matches(in available: [AvailableRuntime]) -> [AvailableRuntime] {
         switch self {
         case let .build(build):
             return available.filter { $0.build.lowercased() == build.lowercased() }
         case let .platform(platform, version?):
             return available.current().filter { $0.platform == platform && $0.version == version }
+        case let .stage(platform, version, stage):
+            return available.filter { $0.platform == platform && $0.version == version && $0.stage == stage }
         case let .platform(platform, nil):
             let candidates = available.current().filter { $0.platform == platform }
             let releases = candidates.filter { $0.stage == .release }
