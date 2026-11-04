@@ -23,6 +23,24 @@ struct RuntimeTableTests {
         """)
     }
 
+    @Test("Labels betas and release candidates it knows from Apple's index")
+    func labelsStages() {
+        let ios = SimulatorPlatform(identifier: "com.apple.platform.iphonesimulator")
+        let stages = ReleaseStageLookup(available: [
+            AvailableRuntime(platform: ios, version: "27.3", build: "24C5037i", stage: .beta(nil), downloads: [
+                RuntimeDownload(variant: .arm64, sizeBytes: 1),
+            ]),
+        ])
+        var sut = makeSUT(runtimes: [
+            makeRuntime(version: "17.2", build: "21C62", architectures: ["arm64"], sizeBytes: nil, lastUsedAt: nil),
+            makeRuntime(version: "27.3", build: "24C5037i", architectures: ["arm64"], sizeBytes: nil, lastUsedAt: nil),
+        ])
+        sut.stages = stages
+
+        #expect(sut.render().contains("iOS 17.2       21C62"))
+        #expect(sut.render().contains("iOS 27.3 beta  24C5037i"))
+    }
+
     @Test("Describes when a runtime was last used in calendar days", arguments: [
         (nil, "-"),
         (0, "today"),
