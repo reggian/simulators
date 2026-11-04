@@ -50,6 +50,22 @@ struct InstalledRuntimeServiceTests {
         #expect(runtime.lastUsedAt == nil)
     }
 
+    @Test("Skips a runtime simctl is still registering instead of failing")
+    func skipsIncompleteRuntime() async throws {
+        let json = """
+        {
+          "A": { "identifier": "A", "runtimeIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-17-2",
+                 "platformIdentifier": "com.apple.platform.iphonesimulator", "version": "17.2", "build": "21C62" },
+          "B": { "identifier": "B", "state": "Mounting" }
+        }
+        """
+        let sut = InstalledRuntimeService(runner: StubCommandRunner(output: Data(json.utf8)))
+
+        let runtimes = try await sut.installedRuntimes()
+
+        #expect(runtimes.map(\.identifier) == ["A"])
+    }
+
     private func fixture(_ name: String) throws -> Data {
         let url = try #require(Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures"))
         return try Data(contentsOf: url)
