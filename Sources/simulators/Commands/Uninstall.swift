@@ -6,7 +6,7 @@ struct Uninstall: AsyncParsableCommand {
         discussion: "Without arguments, shows the installed runtimes as a numbered list to pick from."
     )
 
-    @Argument(help: "Runtimes to uninstall: a build (24B8117), a name (\"iOS 27.2\") or a UUID.")
+    @Argument(help: "Runtimes to uninstall: a build (24B8117), a name (\"iOS 27.2\", \"iOS 27.3 beta\") or a UUID.")
     var runtimes: [String] = []
 
     @Flag(name: .shortAndLong, help: "Don't ask for confirmation.")

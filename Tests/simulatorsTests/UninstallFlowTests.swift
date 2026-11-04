@@ -154,6 +154,18 @@ struct UninstallFlowTests {
         #expect(terminal.output.contains("Xcode uses these runtimes to build, preview and run simulators"))
     }
 
+    @Test("Finds a runtime by its beta label")
+    func matchesLabel() async throws {
+        let index = StubIndexLoader(entries: [
+            .init(platform: "iphoneos", name: "iOS 27.2 beta 4 Simulator Runtime", version: "27.2", build: "24B8117", architectures: ["arm64"], fileSize: 1),
+        ])
+        let (sut, runner, _) = makeSUT(isInteractive: false, index: index)
+
+        try await sut.run(queries: ["iOS 27.2 beta 4"], assumeYes: true, dryRun: false)
+
+        #expect(runner.deletedIdentifiers == ["B"])
+    }
+
     @Test("A dry run in a terminal goes through picking and confirming, then deletes nothing")
     func dryRunRehearsal() async throws {
         let (sut, runner, terminal) = makeSUT(answers: ["1", "y"])
