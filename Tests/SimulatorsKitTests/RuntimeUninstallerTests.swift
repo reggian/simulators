@@ -15,6 +15,18 @@ struct RuntimeUninstallerTests {
         lastUsedAt: nil
     )
 
+    private let runtimeWithFiles = InstalledRuntime(
+        identifier: "A",
+        runtimeIdentifier: "com.apple.CoreSimulator.SimRuntime.iOS-27-1",
+        platform: SimulatorPlatform(identifier: "com.apple.platform.iphonesimulator"),
+        version: "27.1",
+        build: "24A94425",
+        architectures: ["arm64"],
+        sizeBytes: nil,
+        lastUsedAt: nil,
+        path: "/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime/1d40f1.asset/AssetData"
+    )
+
     @Test("Deletes a runtime by its UUID, never by version or build")
     func deletesByIdentifier() async throws {
         let runner = StubCommandRunner(output: Data())
@@ -25,6 +37,40 @@ struct RuntimeUninstallerTests {
         #expect(runner.commands == [
             ["/usr/bin/xcrun", "simctl", "runtime", "delete", "0C734C3C-5798-4F82-B304-BCEABD2DD03C"],
         ])
+    }
+
+    @Test("Waits for the runtime's files to disappear after deleting", arguments: [0, 3])
+    func waitsForFilesToDisappear(checksUntilGone: Int) async throws {
+        let files = FileChecks(existsFor: checksUntilGone)
+        let sleeps = SleepRecorder()
+        let sut = RuntimeUninstaller(
+            runner: StubCommandRunner(output: Data()),
+            fileExists: files.exists,
+            pollInterval: .seconds(1),
+            removalTimeout: .seconds(10),
+            sleep: sleeps.sleep
+        )
+
+        try await sut.uninstall(runtimeWithFiles)
+
+        #expect(sleeps.durations.count == checksUntilGone)
+    }
+
+    @Test("Reports kept files when simctl succeeds but the files stay")
+    func filesStayAfterSuccess() async {
+        let sleeps = SleepRecorder()
+        let sut = RuntimeUninstaller(
+            runner: StubCommandRunner(output: Data()),
+            fileExists: { _ in true },
+            pollInterval: .seconds(1),
+            removalTimeout: .seconds(2),
+            sleep: sleeps.sleep
+        )
+
+        await #expect(throws: RuntimeAssetKept(assetPath: runtimeWithFiles.path)) {
+            try await sut.uninstall(runtimeWithFiles)
+        }
+        #expect(sleeps.durations == [.seconds(1), .seconds(1)])
     }
 
     /// Captured from `simctl runtime delete` on Xcode 27.2, macOS 27.2.
@@ -58,5 +104,24 @@ struct RuntimeUninstallerTests {
 
     private func failure(exitCode: Int32, _ stderr: String) -> CommandFailure {
         CommandFailure(command: ["/usr/bin/xcrun", "simctl"], exitCode: exitCode, standardError: stderr)
+    }
+}
+
+/// Reports a file as existing for the first `existsFor` checks, then as gone.
+private final class FileChecks: @unchecked Sendable {
+    private let lock = NSLock()
+    private var remaining: Int
+
+    init(existsFor checks: Int) {
+        remaining = checks
+    }
+
+    var exists: @Sendable (String) -> Bool {
+        { [self] _ in
+            lock.withLock {
+                defer { remaining -= 1 }
+                return remaining > 0
+            }
+        }
     }
 }

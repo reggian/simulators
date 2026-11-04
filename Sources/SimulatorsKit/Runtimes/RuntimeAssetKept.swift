@@ -1,5 +1,8 @@
 /// `simctl` unregistered a runtime but left its downloaded files (a MobileAsset) on disk.
 ///
+/// Usually `simctl` reports this; some versions reportedly don't, which
+/// ``RuntimeUninstaller`` catches by checking that the files are gone.
+///
 /// The files sit under `/System/Library/AssetsV2`, which System Integrity Protection guards, so
 /// nobody can remove them by hand. `simctl runtime scan-and-mount` registers the runtime again in
 /// the background, after a while, and deleting it once more then removes the files.
