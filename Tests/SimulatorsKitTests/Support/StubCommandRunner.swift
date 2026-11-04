@@ -23,4 +23,8 @@ final class StubCommandRunner: CommandRunner, @unchecked Sendable {
         lock.withLock { recorded.append([executable] + arguments) }
         return try result.get()
     }
+
+    func runAttached(_ executable: String, _ arguments: [String]) async throws {
+        _ = try await run(executable, arguments)
+    }
 }

@@ -7,17 +7,23 @@ behind at 4–9 GB each. Apple's tools (`xcrun simctl runtime`, `xcodebuild -dow
 manage them, but you have to list runtimes, work out which is which, copy an identifier and paste it
 into another command. `simulators` does that part for you.
 
-> **Status:** early development. `simulators list` (installed runtimes) and `simulators uninstall`
-> work so far.
+> **Status:** early development. `list`, `install` and `uninstall` work; `prune` is planned.
 
-## Planned commands
+## Commands
 
 ```text
-simulators list [--available]            installed runtimes, or the ones you can download
-simulators install [<platform> [version]]
-simulators uninstall [<runtime>]
-simulators prune [--yes]                 remove superseded runtimes no installed Xcode uses
+simulators list                           installed runtimes
+simulators list --available [--all]       runtimes Apple offers for download
+simulators install [<runtime> ...]        download and install: iOS 27.2, iOS or 24B8117
+simulators uninstall [<runtime> ...]      uninstall, by name, build or UUID
+simulators prune [--yes]                  planned: remove superseded runtimes no installed Xcode uses
 ```
+
+`list --available` shows, per platform and version, the release builds, or the newest beta when
+there's no release yet; `--all` shows every build. `install` downloads through
+`xcodebuild -downloadPlatform`, arm64 by default (`--arch universal` for Intel too), and only offers
+runtimes that install without signing in to an Apple account. Like `uninstall`, it asks first and
+shows the total size; `--yes` skips the question.
 
 Run a command without a runtime and it shows a numbered list to pick from:
 

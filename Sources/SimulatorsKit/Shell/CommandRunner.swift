@@ -9,4 +9,11 @@ public protocol CommandRunner: Sendable {
     ///
     /// - Throws: ``CommandFailure`` when the command exits with a non-zero status.
     func run(_ executable: String, _ arguments: [String]) async throws -> Data
+
+    /// Runs `executable` with `arguments`, its output going straight to this process's terminal.
+    /// For long commands that show their own progress, such as downloads.
+    ///
+    /// - Throws: ``CommandFailure`` when the command exits with a non-zero status. Its standard
+    ///   error is empty: the user has already seen it.
+    func runAttached(_ executable: String, _ arguments: [String]) async throws
 }

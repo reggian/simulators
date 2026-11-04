@@ -1,4 +1,5 @@
-/// Renders rows as left-aligned, space-separated columns.
+/// Renders rows as left-aligned, space-separated columns, without trailing spaces when the last
+/// cells are empty.
 struct TextTable {
     let header: [String]
     let rows: [[String]]
@@ -17,6 +18,7 @@ struct TextTable {
                         column == row.indices.last ? row[column] : row[column].padding(to: widths[column])
                     }
                     .joined(separator: separator)
+                    .trimmingTrailingSpaces()
             }
             .joined(separator: "\n")
     }
@@ -25,5 +27,9 @@ struct TextTable {
 private extension String {
     func padding(to width: Int) -> String {
         self + String(repeating: " ", count: max(0, width - count))
+    }
+
+    func trimmingTrailingSpaces() -> String {
+        String(self[..<(lastIndex { $0 != " " }.map(index(after:)) ?? startIndex)])
     }
 }

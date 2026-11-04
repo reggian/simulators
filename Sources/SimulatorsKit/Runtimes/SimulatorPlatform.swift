@@ -10,6 +10,23 @@ public struct SimulatorPlatform: Hashable, Sendable, Decodable {
         self.identifier = identifier
     }
 
+    /// The platform for an identifier from Apple's runtime index, which names the device
+    /// platform (`com.apple.platform.iphoneos`) rather than the simulator one
+    /// (`com.apple.platform.iphonesimulator`).
+    public init(indexPlatform: String) {
+        guard indexPlatform.hasSuffix("os") else {
+            self.init(identifier: indexPlatform)
+            return
+        }
+        self.init(identifier: indexPlatform.dropLast(2) + "simulator")
+    }
+
+    /// The known platform with this display name, ignoring case: `ios`, `watchOS`, `tvOS`,
+    /// `visionOS`.
+    public static func named(_ name: String) -> SimulatorPlatform? {
+        known.first { $0.value.name.lowercased() == name.lowercased() }.map { SimulatorPlatform(identifier: $0.key) }
+    }
+
     public init(from decoder: any Decoder) throws {
         identifier = try decoder.singleValueContainer().decode(String.self)
     }

@@ -134,16 +134,8 @@ struct UninstallFlow {
             return []
         }
 
-        terminal.write(RuntimeTable(runtimes: candidates, numbered: true, locale: locale).render() + "\n")
-        let selection = NumberedSelection(count: candidates.count)
-        while let input = terminal.readLine(prompt: "\(prompt) (e.g. 1 3, 2-4, all): ") {
-            do {
-                return try selection.indices(from: input).map { candidates[$0] }
-            } catch {
-                terminal.write(error.localizedDescription)
-            }
-        }
-        return []
+        let table = RuntimeTable(runtimes: candidates, numbered: true, locale: locale).render()
+        return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 
     // MARK: Confirming
@@ -155,8 +147,7 @@ struct UninstallFlow {
         terminal.write("About to uninstall:")
         runtimes.forEach { terminal.write("  \(describe($0))") }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        let answer = terminal.readLine(prompt: "Uninstall \(count), freeing \(totalSize(of: runtimes))? [y/N] ")
-        return ["y", "yes"].contains(answer?.trimmingCharacters(in: .whitespaces).lowercased())
+        return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))?")
     }
 
     // MARK: Text
