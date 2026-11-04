@@ -35,3 +35,17 @@ struct AvailableRuntimeServiceTests {
         #expect(old.downloads.map(\.variant) == [.universal])
     }
 }
+
+@Suite("Current available runtimes")
+struct CurrentAvailableRuntimeTests {
+    @Test("Keeps release builds per version, or the newest pre-release when there's no release")
+    func keepsReleasesOrNewestPrerelease() async throws {
+        let runtimes = try await AvailableRuntimeService(loader: try StubIndexLoader.fixture()).availableRuntimes()
+
+        let current = runtimes.current()
+
+        #expect(current.map(\.build) == [
+            "22G86", "23F77", "24A94425", "24B8117", "24B91016s", "24C5037i", "24S118",
+        ])
+    }
+}
