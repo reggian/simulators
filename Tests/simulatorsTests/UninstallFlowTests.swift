@@ -144,6 +144,16 @@ struct UninstallFlowTests {
         #expect(terminal.output == "Would uninstall iOS 27.2 beta 4 (iPhone19-4) (24B91016s)")
     }
 
+    @Test("Warns before uninstalling a runtime an installed Xcode uses")
+    func warnsAboutUsedRuntime() async throws {
+        let (sut, _, terminal) = makeSUT(answers: ["n"], usage: usage(xcodeUsing: "24B8117"))
+
+        try await sut.run(queries: ["24B8117"], assumeYes: false, dryRun: false)
+
+        #expect(terminal.output.contains("  iOS 27.2 (24B8117), used by Xcode 27.2"))
+        #expect(terminal.output.contains("Xcode uses these runtimes to build, preview and run simulators"))
+    }
+
     @Test("A dry run shows what would be uninstalled and deletes nothing")
     func dryRun() async throws {
         let (sut, runner, terminal) = makeSUT(isInteractive: false)
@@ -160,17 +170,33 @@ struct UninstallFlowTests {
         isInteractive: Bool = true,
         answers: [String] = [],
         deleteFailures: [String: any Error] = [:],
-        index: StubIndexLoader = StubIndexLoader(entries: [])
+        index: StubIndexLoader = StubIndexLoader(entries: []),
+        usage: RuntimeUsageService = RuntimeUsageService(runner: RecordingCommandRunner())
     ) -> (UninstallFlow, RecordingCommandRunner, ScriptedTerminal) {
         let runner = RecordingCommandRunner(runtimeListJSON: runtimeListJSON, deleteFailures: deleteFailures)
         let terminal = ScriptedTerminal(isInteractive: isInteractive, answers: answers)
         let sut = UninstallFlow(
             runner: runner,
             indexLoader: index,
+            runtimeUsage: usage,
             remounter: RuntimeRemounter(runner: runner, timeout: .zero),
             terminal: terminal,
             locale: Locale(identifier: "en_US_POSIX")
         )
         return (sut, runner, terminal)
+    }
+
+    /// Usage where one installed Xcode, 27.2, uses the iOS runtime with `build`.
+    private func usage(xcodeUsing build: String) -> RuntimeUsageService {
+        let app = "/Applications/Xcode-27.2.0.app"
+        let runner = RecordingCommandRunner(outputs: [
+            ["/usr/bin/mdfind", "kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"]: app,
+            ["/usr/bin/env", "DEVELOPER_DIR=\(app)/Contents/Developer", "/usr/bin/xcrun", "simctl", "runtime", "match", "list", "-j"]:
+                #"{ "iphoneos27.2": { "chosenRuntimeBuild": "\#(build)", "platform": "com.apple.platform.iphoneos" } }"#,
+        ])
+        let xcodes = InstalledXcodeService(runner: runner) { _ in
+            try PropertyListEncoder().encode(["CFBundleShortVersionString": "27.2", "ProductBuildVersion": "27B52"])
+        }
+        return RuntimeUsageService(runner: runner, xcodes: xcodes)
     }
 }

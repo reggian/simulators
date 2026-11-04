@@ -5,25 +5,31 @@ import SimulatorsKit
 struct UninstallFlow {
     private let installedRuntimes: InstalledRuntimeService
     private let availableRuntimes: AvailableRuntimeService
+    private let runtimeUsage: RuntimeUsageService
     private let uninstaller: RuntimeUninstaller
     private let remounter: RuntimeRemounter
     private let terminal: any Terminal
     private let locale: Locale
-    /// Beta and RC labels for names; empty until ``run(queries:assumeYes:dryRun:)`` loads them.
+    /// Beta and RC labels, and which Xcodes use which runtime; empty until
+    /// ``run(queries:assumeYes:dryRun:)`` loads them.
     private var stages = ReleaseStageLookup.empty
+    private var usage = RuntimeUsage.empty
 
     /// - Parameters:
     ///   - indexLoader: Apple's runtime index, only used to label betas and RCs.
+    ///   - runtimeUsage: Reads which Xcodes use which runtime. Defaults to one using `runner`.
     ///   - remounter: Brings back runtimes whose files `simctl` kept. Defaults to one using `runner`.
     init(
         runner: any CommandRunner = ProcessCommandRunner(),
         indexLoader: any RuntimeIndexLoader = AppleRuntimeIndexLoader(),
+        runtimeUsage: RuntimeUsageService? = nil,
         remounter: RuntimeRemounter? = nil,
         terminal: any Terminal,
         locale: Locale = .current
     ) {
         self.installedRuntimes = InstalledRuntimeService(runner: runner)
         self.availableRuntimes = AvailableRuntimeService(loader: indexLoader)
+        self.runtimeUsage = runtimeUsage ?? RuntimeUsageService(runner: runner)
         self.uninstaller = RuntimeUninstaller(runner: runner)
         self.remounter = remounter ?? RuntimeRemounter(runner: runner)
         self.terminal = terminal
@@ -32,10 +38,12 @@ struct UninstallFlow {
 
     func run(queries: [String], assumeYes: Bool, dryRun: Bool) async throws {
         async let stages = ReleaseStageLookup.load(from: availableRuntimes, timeout: .seconds(3))
+        async let usage = (try? await runtimeUsage.usage()) ?? .empty
         let runtimes = try await installedRuntimes.installedRuntimes()
 
         var labelled = self
         labelled.stages = await stages
+        labelled.usage = await usage
         try await labelled.run(queries: queries, in: runtimes, assumeYes: assumeYes, dryRun: dryRun)
     }
 
@@ -50,7 +58,7 @@ struct UninstallFlow {
         }
 
         if dryRun {
-            selected.forEach { terminal.write("Would uninstall \(describe($0))") }
+            selected.forEach { terminal.write("Would uninstall \(describe($0))\(usedBy($0))") }
             return
         }
 
@@ -148,7 +156,7 @@ struct UninstallFlow {
             return []
         }
 
-        let table = RuntimeTable(runtimes: candidates, stages: stages, numbered: true, locale: locale).render()
+        let table = RuntimeTable(runtimes: candidates, stages: stages, usage: usage, numbered: true, locale: locale).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 
@@ -159,7 +167,10 @@ struct UninstallFlow {
         guard terminal.isInteractive else { throw UninstallError.confirmationRequired }
 
         terminal.write("About to uninstall:")
-        runtimes.forEach { terminal.write("  \(describe($0))") }
+        runtimes.forEach { terminal.write("  \(describe($0))\(usedBy($0))") }
+        if runtimes.contains(where: { !usage.xcodes(using: $0).isEmpty }) {
+            terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.")
+        }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
         return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))?")
     }
@@ -168,6 +179,12 @@ struct UninstallFlow {
 
     private func describe(_ runtime: InstalledRuntime) -> String {
         "\(name(of: runtime)) (\(runtime.build))"
+    }
+
+    /// `, used by Xcode 27.2`, or nothing when no installed Xcode uses `runtime`.
+    private func usedBy(_ runtime: InstalledRuntime) -> String {
+        let xcodes = usage.xcodes(using: runtime)
+        return xcodes.isEmpty ? "" : ", used by " + xcodes.map(\.name).joined(separator: ", ")
     }
 
     private func name(of runtime: InstalledRuntime) -> String {
