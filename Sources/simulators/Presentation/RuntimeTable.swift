@@ -13,6 +13,10 @@ struct RuntimeTable {
     var calendar: Calendar = .current
     var locale: Locale = .current
 
+    private var describer: RuntimeDescriber {
+        RuntimeDescriber(stages: stages, usage: usage ?? .empty)
+    }
+
     func render() -> String {
         let lastUsed = LastUsedDescription(now: now, calendar: calendar)
         var header = ["Runtime", "Build", "Arch", "Size", "Last used"]
@@ -20,7 +24,7 @@ struct RuntimeTable {
 
         let rows = runtimes.map { runtime in
             var row = [
-                TextTable.Cell(runtime.name(stage: stages.stage(of: runtime))),
+                TextTable.Cell(describer.name(of: runtime), describer.nameStyle(of: runtime)),
                 TextTable.Cell(runtime.build),
                 TextTable.Cell(architecture(of: runtime)),
                 TextTable.Cell(runtime.sizeBytes.map { $0.fileSize(locale: locale) }),

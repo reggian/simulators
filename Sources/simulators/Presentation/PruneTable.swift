@@ -17,7 +17,7 @@ struct PruneTable {
         let header = ["Runtime", "Build", "Size", "Last used", "Reason"]
         let rows = candidates.map { candidate in
             [
-                TextTable.Cell(describer.name(of: candidate.runtime)),
+                TextTable.Cell(describer.name(of: candidate.runtime), describer.nameStyle(of: candidate.runtime)),
                 TextTable.Cell(candidate.runtime.build),
                 TextTable.Cell(candidate.runtime.sizeBytes.map { $0.fileSize(locale: locale) }),
                 TextTable.Cell(candidate.runtime.lastUsedAt.map { lastUsed.describe($0) }),

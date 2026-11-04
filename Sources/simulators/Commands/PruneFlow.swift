@@ -108,6 +108,6 @@ struct PruneFlow {
             "Skipped \(describer.name(of: group[0])) (\(group.map(\.build).joined(separator: ", "))): "
                 + "Apple's index doesn't list every build, so it's unclear which is newest."
         }
-        return kept + undecided
+        return (kept + undecided).map { terminal.styler($0, .dim) }
     }
 }

@@ -10,6 +10,14 @@ struct RuntimeDescriber {
         runtime.name(stage: stages.stage(of: runtime))
     }
 
+    /// Yellow for betas and release candidates, so they stand out in tables.
+    func nameStyle(of runtime: InstalledRuntime) -> Style? {
+        switch stages.stage(of: runtime) {
+        case .beta, .releaseCandidate: .yellow
+        case .release, nil: nil
+        }
+    }
+
     /// The name and build, for example `iOS 27.3 beta (24C5037i)`.
     func describe(_ runtime: InstalledRuntime) -> String {
         "\(name(of: runtime)) (\(runtime.build))"

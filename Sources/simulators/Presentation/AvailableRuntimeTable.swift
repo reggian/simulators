@@ -15,13 +15,16 @@ struct AvailableRuntimeTable {
         if installed != nil { header.append("Installed") }
 
         let rows = runtimes.map { runtime in
+            // Installed runtimes are green across the whole row; otherwise betas and RCs are yellow.
+            let isInstalled = installed.map(runtime.isInstalled(in:)) ?? false
+            let rowStyle: Style? = isInstalled ? .green : nil
             var row = [
-                TextTable.Cell(runtime.name),
-                TextTable.Cell(runtime.build),
-                TextTable.Cell(runtime.downloads.map(\.variant.rawValue).joined(separator: ", ")),
-                TextTable.Cell(runtime.defaultDownload.sizeBytes.fileSize(locale: locale)),
+                TextTable.Cell(runtime.name, rowStyle ?? (runtime.stage == .release ? nil : .yellow)),
+                TextTable.Cell(runtime.build, rowStyle),
+                TextTable.Cell(runtime.downloads.map(\.variant.rawValue).joined(separator: ", "), rowStyle),
+                TextTable.Cell(runtime.defaultDownload.sizeBytes.fileSize(locale: locale), rowStyle),
             ]
-            if let installed { row.append(TextTable.Cell(runtime.isInstalled(in: installed) ? "yes" : "")) }
+            if installed != nil { row.append(TextTable.Cell(isInstalled ? "yes" : "", rowStyle)) }
             return row
         }
         guard !numbered else {

@@ -57,7 +57,9 @@ struct UninstallFlow {
 
         // A dry run in a terminal rehearses the whole flow; without one (or with --yes) it reports.
         if dryRun && (assumeYes || !terminal.isInteractive) {
-            selected.forEach { terminal.write("Would uninstall \(describer.describe($0))\(describer.usedBy($0))") }
+            selected.forEach {
+                terminal.write("Would uninstall \(describer.describe($0))" + terminal.styler(describer.usedBy($0), .yellow))
+            }
             return
         }
 
