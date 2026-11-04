@@ -7,7 +7,8 @@ behind at 4–9 GB each. Apple's tools (`xcrun simctl runtime`, `xcodebuild -dow
 manage them, but you have to list runtimes, work out which is which, copy an identifier and paste it
 into another command. `simulators` does that part for you.
 
-> **Status:** early development. Only `simulators list` (installed runtimes) works so far.
+> **Status:** early development. `simulators list` (installed runtimes) and `simulators uninstall`
+> work so far.
 
 ## Planned commands
 
