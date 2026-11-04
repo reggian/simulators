@@ -31,7 +31,7 @@ struct RuntimeUsageServiceTests {
         #expect(usage.xcodes(using: runtime("iOS", "24B91016s")).isEmpty)
     }
 
-    @Test("Skips an Xcode that can't be asked")
+    @Test("Reports an Xcode that can't be asked")
     func skipsBrokenXcode() async throws {
         let runner = SequencedCommandRunner(outputs: [
             Self.spotlight: [Data("/Applications/Xcode-27.2.0.app\n".utf8)],
@@ -42,6 +42,7 @@ struct RuntimeUsageServiceTests {
         let usage = try await sut.usage()
 
         #expect(usage.xcodes(using: runtime("iOS", "24B8117")).isEmpty)
+        #expect(usage.unreadableXcodes.map(\.name) == ["Xcode 27.2"])
     }
 
     private func matchList(for app: String) -> [String] {

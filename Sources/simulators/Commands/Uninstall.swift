@@ -12,7 +12,7 @@ struct Uninstall: AsyncParsableCommand {
     @Flag(name: .shortAndLong, help: "Don't ask for confirmation.")
     var yes = false
 
-    @Flag(help: "Show what would be uninstalled without deleting anything.")
+    @Flag(help: "Go through the same steps, asking as usual in a terminal, but uninstall nothing.")
     var dryRun = false
 
     func run() async throws {

@@ -7,7 +7,7 @@ behind at 4–9 GB each. Apple's tools (`xcrun simctl runtime`, `xcodebuild -dow
 manage them, but you have to list runtimes, work out which is which, copy an identifier and paste it
 into another command. `simulators` does that part for you.
 
-> **Status:** early development. `list`, `install` and `uninstall` work; `prune` is planned.
+> **Status:** early development. `list`, `install`, `uninstall` and `prune` work.
 
 ## Commands
 
@@ -16,7 +16,7 @@ simulators list                           installed runtimes
 simulators list --available [--all]       runtimes Apple offers for download
 simulators install [<runtime> ...]        download and install: iOS 27.2, iOS or 24B8117
 simulators uninstall [<runtime> ...]      uninstall, by name, build or UUID
-simulators prune [--yes]                  planned: remove superseded runtimes no installed Xcode uses
+simulators prune [--unused-for <days>]    uninstall superseded and long-unused runtimes
 ```
 
 `list --available` shows, per platform and version, the release builds, or the newest beta when
@@ -27,6 +27,21 @@ shows the total size; `--yes` skips the question.
 
 Installed runtimes don't record whether they're a beta, so `list` and `uninstall` look the build up
 in Apple's index to label betas and release candidates. Offline, they show the plain version.
+
+`prune` offers two kinds of runtimes, each with its reason:
+
+- **Superseded:** a newer build of the same runtime is installed, such as the release after a
+  beta. Builds are ranked by release stage from Apple's index, then by build number, because
+  Apple's build numbers don't sort across betas, release candidates and releases.
+- **Unused:** not used for 180 days (`--unused-for <days>`; `--superseded-only` turns this off).
+  A runtime `simctl` has no last-used date for is never offered.
+
+It keeps runtimes an installed Xcode uses, and says so. You pick from a numbered list (Enter takes
+all), then confirm, as with `uninstall`.
+
+`install`, `uninstall` and `prune` take `--dry-run`. In a terminal it goes through the same steps,
+picking and confirming included, and changes nothing at the end. Without a terminal, or with
+`--yes`, it only reports what would happen.
 
 The Used by column names the installed Xcodes that use a runtime: per SDK, the build Xcode picks
 for building, previews and running simulators of that OS version (`simctl runtime match list`,

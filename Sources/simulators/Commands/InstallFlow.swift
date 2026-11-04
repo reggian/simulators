@@ -43,13 +43,18 @@ struct InstallFlow {
             return
         }
 
-        if dryRun {
+        // A dry run in a terminal rehearses the whole flow; without one (or with --yes) it reports.
+        if dryRun && (assumeYes || !terminal.isInteractive) {
             downloads.forEach { terminal.write("Would install \(describe($0.0, $0.1))") }
             return
         }
 
-        guard try confirm(downloads, assumeYes: assumeYes) else {
+        guard try confirm(downloads, assumeYes: assumeYes, dryRun: dryRun) else {
             terminal.write("Cancelled. Nothing was installed.")
+            return
+        }
+        guard !dryRun else {
+            terminal.write("Dry run: nothing was installed.")
             return
         }
         try await install(downloads)
@@ -57,7 +62,8 @@ struct InstallFlow {
 
     // MARK: Confirming
 
-    private func confirm(_ downloads: [(AvailableRuntime, RuntimeDownload)], assumeYes: Bool) throws -> Bool {
+    /// Lists the downloads and asks y/N, unless `assumeYes`. In a dry run, the question says so.
+    private func confirm(_ downloads: [(AvailableRuntime, RuntimeDownload)], assumeYes: Bool, dryRun: Bool) throws -> Bool {
         if assumeYes { return true }
         guard terminal.isInteractive else { throw InstallError.confirmationRequired }
 
@@ -65,7 +71,7 @@ struct InstallFlow {
         downloads.forEach { terminal.write("  \(describe($0.0, $0.1))") }
         let count = downloads.count == 1 ? "1 runtime" : "\(downloads.count) runtimes"
         let size = downloads.map(\.1.sizeBytes).reduce(0, +).fileSize(locale: locale)
-        return terminal.askYesNo("Install \(count), downloading \(size)?")
+        return terminal.askYesNo("Install \(count), downloading \(size)\(dryRun ? " (dry run)" : "")?")
     }
 
     // MARK: Installing

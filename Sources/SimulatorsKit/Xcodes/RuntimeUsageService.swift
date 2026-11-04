@@ -12,21 +12,26 @@ public struct RuntimeUsageService: Sendable {
     }
 
     /// Runs `simctl runtime match list` once per installed Xcode, with `DEVELOPER_DIR` pointing at
-    /// it, because `simctl` only answers for one Xcode at a time. Skips an Xcode it can't ask.
+    /// it, because `simctl` only answers for one Xcode at a time. An Xcode it can't ask is listed
+    /// in ``RuntimeUsage/unreadableXcodes``.
     public func usage() async throws -> RuntimeUsage {
         var choices: [(xcode: InstalledXcode, platform: SimulatorPlatform, build: String)] = []
+        var unreadable: [InstalledXcode] = []
         for xcode in try await xcodes.installedXcodes() {
             guard let output = try? await runner.run("/usr/bin/env", [
                 "DEVELOPER_DIR=\(xcode.developerDirectory)", "/usr/bin/xcrun", "simctl", "runtime", "match", "list", "-j",
             ]),
                 let matches = try? JSONDecoder().decode([String: SDKMatch].self, from: output)
-            else { continue }
+            else {
+                unreadable.append(xcode)
+                continue
+            }
 
             choices += matches.values.map {
                 (xcode, SimulatorPlatform(indexPlatform: $0.platform), $0.chosenRuntimeBuild)
             }
         }
-        return RuntimeUsage(choices: choices)
+        return RuntimeUsage(choices: choices, unreadableXcodes: unreadable)
     }
 }
 
