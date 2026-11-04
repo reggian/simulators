@@ -56,68 +56,22 @@ struct UninstallFlow {
         }
 
         if dryRun {
-            selected.forEach { terminal.write("Would uninstall \(describe($0))\(usedBy($0))") }
+            selected.forEach { terminal.write("Would uninstall \(describer.describe($0))\(describer.usedBy($0))") }
             return
         }
 
-        guard try confirm(selected, assumeYes: assumeYes) else {
+        let removal = RuntimeRemoval(
+            uninstaller: uninstaller,
+            remounter: remounter,
+            terminal: terminal,
+            describer: describer,
+            locale: locale
+        )
+        guard try removal.confirm(selected, assumeYes: assumeYes) else {
             terminal.write("Cancelled. Nothing was uninstalled.")
             return
         }
-
-        try await uninstall(selected)
-    }
-
-    // MARK: Uninstalling
-
-    /// Uninstalls each runtime in turn, carrying on past failures, and throws at the end if any failed.
-    private func uninstall(_ runtimes: [InstalledRuntime]) async throws {
-        var freed: [InstalledRuntime] = []
-        var failed: [String] = []
-        for runtime in runtimes {
-            terminal.write("Uninstalling \(describe(runtime))…")
-            do {
-                try await uninstallReclaimingFiles(runtime)
-                freed.append(runtime)
-            } catch let kept as RuntimeAssetKept {
-                terminal.write(describe(kept, of: runtime))
-                failed.append(describe(runtime))
-            } catch {
-                terminal.write("  \(error.localizedDescription)")
-                failed.append(describe(runtime))
-            }
-        }
-
-        guard failed.isEmpty else {
-            throw UninstallError.incomplete(failed: failed, freed: freed.isEmpty ? nil : totalSize(of: freed))
-        }
-        terminal.write("Done. Freed \(totalSize(of: freed)).")
-    }
-
-    /// Uninstalls `runtime`. When `simctl` unregisters it but keeps its files, waits for it to be
-    /// registered again and deletes it once more, which removes the files.
-    ///
-    /// - Throws: ``RuntimeAssetKept`` when the files are still there after that.
-    private func uninstallReclaimingFiles(_ runtime: InstalledRuntime) async throws {
-        do {
-            try await uninstaller.uninstall(runtime)
-        } catch let kept as RuntimeAssetKept {
-            terminal.write("  simctl left its files behind. Waiting for macOS to register \(name(of: runtime)) again…")
-            guard let remounted = try await remounter.remount(runtime) else {
-                terminal.write("  It isn't back yet.")
-                throw kept
-            }
-            terminal.write("  Uninstalling it again…")
-            try await uninstaller.uninstall(remounted)
-        }
-    }
-
-    private func describe(_ kept: RuntimeAssetKept, of runtime: InstalledRuntime) -> String {
-        let size = runtime.sizeBytes.map { " (\($0.fileSize(locale: locale)))" } ?? ""
-        let location = kept.assetPath.map { " in \($0)" } ?? ""
-        return "  Its files\(size) are still\(location). To free them, run "
-            + "`xcrun simctl runtime scan-and-mount`, wait until \(name(of: runtime)) is back in "
-            + "`simulators list` (it can take a while), and uninstall it again."
+        try await removal.uninstall(selected)
     }
 
     // MARK: Choosing runtimes
@@ -133,14 +87,14 @@ struct UninstallFlow {
                 selected += matches
             default:
                 guard terminal.isInteractive else {
-                    throw UninstallError.ambiguous(query, matches: matches.map(describe))
+                    throw UninstallError.ambiguous(query, matches: matches.map(describer.describe))
                 }
                 selected += try pick(from: matches, prompt: "\"\(query)\" matches several runtimes. Select")
             }
         }
 
         if let undeletable = selected.first(where: { !$0.isDeletable }) {
-            throw UninstallError.notDeletable(name(of: undeletable))
+            throw UninstallError.notDeletable(describer.name(of: undeletable))
         }
         return selected.uniqued()
     }
@@ -156,39 +110,6 @@ struct UninstallFlow {
 
         let table = RuntimeTable(runtimes: candidates, stages: describer.stages, usage: describer.usage, numbered: true, locale: locale).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
-    }
-
-    // MARK: Confirming
-
-    private func confirm(_ runtimes: [InstalledRuntime], assumeYes: Bool) throws -> Bool {
-        if assumeYes { return true }
-        guard terminal.isInteractive else { throw UninstallError.confirmationRequired }
-
-        terminal.write("About to uninstall:")
-        runtimes.forEach { terminal.write("  \(describe($0))\(usedBy($0))") }
-        if runtimes.contains(where: { !describer.usage.xcodes(using: $0).isEmpty }) {
-            terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.")
-        }
-        let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))?")
-    }
-
-    // MARK: Text
-
-    private func describe(_ runtime: InstalledRuntime) -> String {
-        describer.describe(runtime)
-    }
-
-    private func usedBy(_ runtime: InstalledRuntime) -> String {
-        describer.usedBy(runtime)
-    }
-
-    private func name(of runtime: InstalledRuntime) -> String {
-        describer.name(of: runtime)
-    }
-
-    private func totalSize(of runtimes: [InstalledRuntime]) -> String {
-        Int64.totalSize(of: runtimes.map(\.sizeBytes)).fileSize(locale: locale)
     }
 }
 
