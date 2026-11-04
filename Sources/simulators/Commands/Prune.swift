@@ -19,7 +19,7 @@ struct Prune: AsyncParsableCommand {
     @Flag(name: .shortAndLong, help: "Uninstall all candidates without asking.")
     var yes = false
 
-    @Flag(help: "Show the candidates without uninstalling anything.")
+    @Flag(help: "Go through the same steps, asking as usual in a terminal, but uninstall nothing.")
     var dryRun = false
 
     func validate() throws {

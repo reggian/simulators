@@ -154,6 +154,17 @@ struct UninstallFlowTests {
         #expect(terminal.output.contains("Xcode uses these runtimes to build, preview and run simulators"))
     }
 
+    @Test("A dry run in a terminal goes through picking and confirming, then deletes nothing")
+    func dryRunRehearsal() async throws {
+        let (sut, runner, terminal) = makeSUT(answers: ["1", "y"])
+
+        try await sut.run(queries: [], assumeYes: false, dryRun: true)
+
+        #expect(runner.deletedIdentifiers.isEmpty)
+        #expect(terminal.output.contains("Uninstall 1 runtime, freeing 7 GB (dry run)? [y/N]"))
+        #expect(terminal.output.hasSuffix("Dry run: nothing was uninstalled."))
+    }
+
     @Test("A dry run shows what would be uninstalled and deletes nothing")
     func dryRun() async throws {
         let (sut, runner, terminal) = makeSUT(isInteractive: false)

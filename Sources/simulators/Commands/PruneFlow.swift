@@ -55,34 +55,41 @@ struct PruneFlow {
             return
         }
 
-        let table = PruneTable(candidates: plan.candidates, describer: describer, numbered: !(dryRun || assumeYes), now: now, locale: locale)
+        // In a terminal, the user picks and confirms, also in a dry run, which rehearses the whole
+        // flow. Without one (or with --yes) every candidate is taken, and a dry run only reports.
+        let asks = terminal.isInteractive && !assumeYes
+        let table = PruneTable(candidates: plan.candidates, describer: describer, numbered: asks, now: now, locale: locale)
         let runtimes = plan.candidates.map(\.runtime)
         let removal = RuntimeRemoval(uninstaller: uninstaller, remounter: remounter, terminal: terminal, describer: describer, locale: locale)
 
-        if dryRun || assumeYes {
+        if !asks {
+            guard assumeYes || dryRun else { throw PruneError.selectionRequired }
             terminal.write(([table.render()] + notes).joined(separator: "\n\n"))
         }
-        if dryRun {
+        if dryRun && !asks {
             let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
             terminal.write("Would uninstall \(count), freeing \(removal.totalSize(of: runtimes)).")
             return
         }
 
-        let selected = assumeYes ? runtimes : try pick(from: runtimes, table: table, notes: notes)
+        let selected = asks ? pick(from: runtimes, table: table, notes: notes) : runtimes
         guard !selected.isEmpty else {
             terminal.write("Nothing selected.")
             return
         }
-        guard try removal.confirm(selected, assumeYes: assumeYes) else {
+        guard try removal.confirm(selected, assumeYes: !asks, dryRun: dryRun) else {
             terminal.write("Cancelled. Nothing was uninstalled.")
+            return
+        }
+        guard !dryRun else {
+            terminal.write("Dry run: nothing was uninstalled.")
             return
         }
         try await removal.uninstall(selected)
     }
 
-    private func pick(from runtimes: [InstalledRuntime], table: PruneTable, notes: [String]) throws -> [InstalledRuntime] {
-        guard terminal.isInteractive else { throw PruneError.selectionRequired }
-        return NumberedPicker(terminal: terminal).pick(
+    private func pick(from runtimes: [InstalledRuntime], table: PruneTable, notes: [String]) -> [InstalledRuntime] {
+        NumberedPicker(terminal: terminal).pick(
             runtimes,
             table: ([table.render()] + notes).joined(separator: "\n\n"),
             prompt: "Select runtimes to prune",

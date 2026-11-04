@@ -129,6 +129,17 @@ struct InstallFlowTests {
         #expect(runner.attachedCommands.map { $0[5] } == ["23F77", "24S118"])
     }
 
+    @Test("A dry run in a terminal goes through picking and confirming, then downloads nothing")
+    func dryRunRehearsal() async throws {
+        let (sut, runner, terminal) = makeSUT(answers: ["4", "y"])
+
+        try await sut.run(arguments: [], variant: nil, assumeYes: false, dryRun: true)
+
+        #expect(runner.attachedCommands.isEmpty)
+        #expect(terminal.output.contains("Install 1 runtime, downloading 3.89 GB (dry run)? [y/N]"))
+        #expect(terminal.output.hasSuffix("Dry run: nothing was installed."))
+    }
+
     @Test("A dry run shows what would be installed and downloads nothing")
     func dryRun() async throws {
         let (sut, runner, terminal) = makeSUT(isInteractive: false)

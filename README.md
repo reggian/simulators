@@ -39,6 +39,10 @@ in Apple's index to label betas and release candidates. Offline, they show the p
 It keeps runtimes an installed Xcode uses, and says so. You pick from a numbered list (Enter takes
 all), then confirm, as with `uninstall`.
 
+`install`, `uninstall` and `prune` take `--dry-run`. In a terminal it goes through the same steps,
+picking and confirming included, and changes nothing at the end. Without a terminal, or with
+`--yes`, it only reports what would happen.
+
 The Used by column names the installed Xcodes that use a runtime: per SDK, the build Xcode picks
 for building, previews and running simulators of that OS version (`simctl runtime match list`,
 asked once per Xcode). Older runtimes still work for testing older OS versions, so an empty column

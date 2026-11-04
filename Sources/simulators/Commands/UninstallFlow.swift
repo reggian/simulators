@@ -55,7 +55,8 @@ struct UninstallFlow {
             return
         }
 
-        if dryRun {
+        // A dry run in a terminal rehearses the whole flow; without one (or with --yes) it reports.
+        if dryRun && (assumeYes || !terminal.isInteractive) {
             selected.forEach { terminal.write("Would uninstall \(describer.describe($0))\(describer.usedBy($0))") }
             return
         }
@@ -67,8 +68,12 @@ struct UninstallFlow {
             describer: describer,
             locale: locale
         )
-        guard try removal.confirm(selected, assumeYes: assumeYes) else {
+        guard try removal.confirm(selected, assumeYes: assumeYes, dryRun: dryRun) else {
             terminal.write("Cancelled. Nothing was uninstalled.")
+            return
+        }
+        guard !dryRun else {
+            terminal.write("Dry run: nothing was uninstalled.")
             return
         }
         try await removal.uninstall(selected)

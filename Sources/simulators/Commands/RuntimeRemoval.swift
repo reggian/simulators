@@ -11,10 +11,11 @@ struct RuntimeRemoval {
 
     // MARK: Confirming
 
-    /// Lists `runtimes` with the Xcodes that use them and asks y/N, unless `assumeYes`.
+    /// Lists `runtimes` with the Xcodes that use them and asks y/N, unless `assumeYes`. In a dry
+    /// run, the question says so.
     ///
     /// - Throws: ``UninstallError/confirmationRequired`` when there's no terminal to ask.
-    func confirm(_ runtimes: [InstalledRuntime], assumeYes: Bool) throws -> Bool {
+    func confirm(_ runtimes: [InstalledRuntime], assumeYes: Bool, dryRun: Bool = false) throws -> Bool {
         if assumeYes { return true }
         guard terminal.isInteractive else { throw UninstallError.confirmationRequired }
 
@@ -24,7 +25,8 @@ struct RuntimeRemoval {
             terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.")
         }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))?")
+        let marker = dryRun ? " (dry run)" : ""
+        return terminal.askYesNo("Uninstall \(count), freeing \(totalSize(of: runtimes))\(marker)?")
     }
 
     // MARK: Uninstalling

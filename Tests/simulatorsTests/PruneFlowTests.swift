@@ -81,7 +81,19 @@ struct PruneFlowTests {
         #expect(terminal.output.contains("2 runtimes, 15 GB"))
     }
 
-    @Test("A dry run shows the candidates and uninstalls nothing")
+    @Test("A dry run in a terminal goes through picking and confirming, then uninstalls nothing")
+    func dryRunRehearsal() async throws {
+        let (sut, runner, terminal) = makeSUT(answers: ["", "y"])
+
+        try await sut.run(unusedForDays: 180, assumeYes: false, dryRun: true)
+
+        #expect(runner.deletedIdentifiers.isEmpty)
+        #expect(terminal.output.contains("Select runtimes to prune (e.g. 1 3, 2-4, all) [all]: "))
+        #expect(terminal.output.contains("Uninstall 2 runtimes, freeing 15 GB (dry run)? [y/N]"))
+        #expect(terminal.output.hasSuffix("Dry run: nothing was uninstalled."))
+    }
+
+    @Test("A dry run without a terminal shows the candidates and uninstalls nothing")
     func dryRun() async throws {
         let (sut, runner, terminal) = makeSUT(isInteractive: false)
 

@@ -32,7 +32,7 @@ struct Install: AsyncParsableCommand {
     @Flag(name: .shortAndLong, help: "Don't ask for confirmation.")
     var yes = false
 
-    @Flag(help: "Show what would be installed without downloading anything.")
+    @Flag(help: "Go through the same steps, asking as usual in a terminal, but download nothing.")
     var dryRun = false
 
     func run() async throws {
