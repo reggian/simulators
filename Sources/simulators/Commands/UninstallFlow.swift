@@ -134,16 +134,8 @@ struct UninstallFlow {
             return []
         }
 
-        terminal.write(RuntimeTable(runtimes: candidates, numbered: true, locale: locale).render() + "\n")
-        let selection = NumberedSelection(count: candidates.count)
-        while let input = terminal.readLine(prompt: "\(prompt) (e.g. 1 3, 2-4, all): ") {
-            do {
-                return try selection.indices(from: input).map { candidates[$0] }
-            } catch {
-                terminal.write(error.localizedDescription)
-            }
-        }
-        return []
+        let table = RuntimeTable(runtimes: candidates, numbered: true, locale: locale).render()
+        return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 
     // MARK: Confirming
