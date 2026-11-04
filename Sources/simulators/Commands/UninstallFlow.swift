@@ -113,7 +113,14 @@ struct UninstallFlow {
             return []
         }
 
-        let table = RuntimeTable(runtimes: candidates, stages: describer.stages, usage: describer.usage, numbered: true, locale: locale).render()
+        let table = RuntimeTable(
+            runtimes: candidates,
+            stages: describer.stages,
+            usage: describer.usage,
+            numbered: true,
+            styler: terminal.styler,
+            locale: locale
+        ).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 }

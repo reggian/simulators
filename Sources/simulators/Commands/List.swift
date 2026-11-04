@@ -27,13 +27,13 @@ struct List: AsyncParsableCommand {
         } else {
             async let stages = ReleaseStageLookup.load(from: AvailableRuntimeService(), timeout: .seconds(3))
             async let usage = (try? await RuntimeUsageService().usage()) ?? .empty
-            print(RuntimeTable(runtimes: installed, stages: await stages, usage: await usage).render())
+            print(RuntimeTable(runtimes: installed, stages: await stages, usage: await usage, styler: StandardTerminal().styler).render())
         }
     }
 
     private func listAvailable(installed: [InstalledRuntime]) async throws {
         let everything = try await AvailableRuntimeService().availableRuntimes()
         let runtimes = all ? everything : everything.current()
-        print(AvailableRuntimeTable(runtimes: runtimes, installed: installed).render())
+        print(AvailableRuntimeTable(runtimes: runtimes, installed: installed, styler: StandardTerminal().styler).render())
     }
 }

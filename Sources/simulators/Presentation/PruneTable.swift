@@ -7,6 +7,7 @@ struct PruneTable {
     let candidates: [PruneCandidate]
     let describer: RuntimeDescriber
     var numbered = false
+    var styler: Styler = .plain
     var now: Date = .now
     var calendar: Calendar = .current
     var locale: Locale = .current
@@ -16,21 +17,20 @@ struct PruneTable {
         let header = ["Runtime", "Build", "Size", "Last used", "Reason"]
         let rows = candidates.map { candidate in
             [
-                describer.name(of: candidate.runtime),
-                candidate.runtime.build,
-                candidate.runtime.sizeBytes.map { $0.fileSize(locale: locale) } ?? "-",
-                lastUsed.describe(candidate.runtime.lastUsedAt),
-                reason(candidate.reason),
+                TextTable.Cell(describer.name(of: candidate.runtime)),
+                TextTable.Cell(candidate.runtime.build),
+                TextTable.Cell(candidate.runtime.sizeBytes.map { $0.fileSize(locale: locale) }),
+                TextTable.Cell(candidate.runtime.lastUsedAt.map { lastUsed.describe($0) }),
+                TextTable.Cell(reason(candidate.reason)),
             ]
         }
         guard !numbered else {
-            return TextTable(header: ["#"] + header, rows: rows.enumerated().map { ["\($0.offset + 1)"] + $0.element })
-                .render()
+            return TextTable.numbered(header: header, rows: rows, styler: styler).render()
         }
         let runtimes = candidates.map(\.runtime)
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
         let size = Int64.totalSize(of: runtimes.map(\.sizeBytes)).fileSize(locale: locale)
-        return TextTable(header: header, rows: rows).render() + "\n\n\(count), \(size)"
+        return TextTable(header: header, rows: rows, styler: styler).render() + "\n\n" + styler("\(count), \(size)", .dim)
     }
 
     /// For example `superseded by iOS 27.2 (24B8117)` or `not used for 7 months`.

@@ -58,7 +58,7 @@ struct PruneFlow {
         // In a terminal, the user picks and confirms, also in a dry run, which rehearses the whole
         // flow. Without one (or with --yes) every candidate is taken, and a dry run only reports.
         let asks = terminal.isInteractive && !assumeYes
-        let table = PruneTable(candidates: plan.candidates, describer: describer, numbered: asks, now: now, locale: locale)
+        let table = PruneTable(candidates: plan.candidates, describer: describer, numbered: asks, styler: terminal.styler, now: now, locale: locale)
         let runtimes = plan.candidates.map(\.runtime)
         let removal = RuntimeRemoval(uninstaller: uninstaller, remounter: remounter, terminal: terminal, describer: describer, locale: locale)
 

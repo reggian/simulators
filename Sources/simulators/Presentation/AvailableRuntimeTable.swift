@@ -7,6 +7,7 @@ struct AvailableRuntimeTable {
     let runtimes: [AvailableRuntime]
     var installed: [InstalledRuntime]?
     var numbered = false
+    var styler: Styler = .plain
     var locale: Locale = .current
 
     func render() -> String {
@@ -15,19 +16,18 @@ struct AvailableRuntimeTable {
 
         let rows = runtimes.map { runtime in
             var row = [
-                runtime.name,
-                runtime.build,
-                runtime.downloads.map(\.variant.rawValue).joined(separator: ", "),
-                runtime.defaultDownload.sizeBytes.fileSize(locale: locale),
+                TextTable.Cell(runtime.name),
+                TextTable.Cell(runtime.build),
+                TextTable.Cell(runtime.downloads.map(\.variant.rawValue).joined(separator: ", ")),
+                TextTable.Cell(runtime.defaultDownload.sizeBytes.fileSize(locale: locale)),
             ]
-            if let installed { row.append(runtime.isInstalled(in: installed) ? "yes" : "") }
+            if let installed { row.append(TextTable.Cell(runtime.isInstalled(in: installed) ? "yes" : "")) }
             return row
         }
         guard !numbered else {
-            return TextTable(header: ["#"] + header, rows: rows.enumerated().map { ["\($0.offset + 1)"] + $0.element })
-                .render()
+            return TextTable.numbered(header: header, rows: rows, styler: styler).render()
         }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        return TextTable(header: header, rows: rows).render() + "\n\n" + count
+        return TextTable(header: header, rows: rows, styler: styler).render() + "\n\n" + styler(count, .dim)
     }
 }
