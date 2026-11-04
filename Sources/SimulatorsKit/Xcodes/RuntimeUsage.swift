@@ -5,12 +5,20 @@
 /// `iOS-27-2-iPhone19-4` are never that build, so no Xcode shows as using them.
 public struct RuntimeUsage: Sendable {
     private let xcodesByRuntime: [Key: [InstalledXcode]]
+    /// Installed Xcodes that couldn't be asked which runtimes they use. Any runtime might be one
+    /// of theirs.
+    public let unreadableXcodes: [InstalledXcode]
 
     /// Usage that knows no Xcodes, for when it can't be read.
     public static let empty = RuntimeUsage(choices: [])
 
-    /// - Parameter choices: Per Xcode and SDK, the platform and runtime build it picks.
-    public init(choices: [(xcode: InstalledXcode, platform: SimulatorPlatform, build: String)]) {
+    /// - Parameters:
+    ///   - choices: Per Xcode and SDK, the platform and runtime build it picks.
+    ///   - unreadableXcodes: Xcodes that couldn't be asked.
+    public init(
+        choices: [(xcode: InstalledXcode, platform: SimulatorPlatform, build: String)],
+        unreadableXcodes: [InstalledXcode] = []
+    ) {
         var xcodesByRuntime: [Key: [InstalledXcode]] = [:]
         for choice in choices {
             let key = Key(platform: choice.platform, build: choice.build)
@@ -19,6 +27,7 @@ public struct RuntimeUsage: Sendable {
             }
         }
         self.xcodesByRuntime = xcodesByRuntime
+        self.unreadableXcodes = unreadableXcodes
     }
 
     /// The Xcodes that use `runtime`, in the order they were read (oldest version first).
