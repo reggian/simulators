@@ -28,6 +28,11 @@ shows the total size; `--yes` skips the question.
 Installed runtimes don't record whether they're a beta, so `list` and `uninstall` look the build up
 in Apple's index to label betas and release candidates. Offline, they show the plain version.
 
+The Used by column names the installed Xcodes that use a runtime: per SDK, the build Xcode picks
+for building, previews and running simulators of that OS version (`simctl runtime match list`,
+asked once per Xcode). Older runtimes still work for testing older OS versions, so an empty column
+doesn't mean a runtime is useless. `uninstall` warns before removing a runtime an Xcode uses.
+
 Run a command without a runtime and it shows a numbered list to pick from:
 
 ```text
