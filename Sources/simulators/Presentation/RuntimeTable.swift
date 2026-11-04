@@ -1,9 +1,11 @@
 import Foundation
 import SimulatorsKit
 
-/// A table of installed runtimes followed by a total. Numbered when the user picks from it.
+/// A table of installed runtimes followed by a total. Numbered when the user picks from it; names
+/// carry beta and RC labels when `stages` knows them.
 struct RuntimeTable {
     let runtimes: [InstalledRuntime]
+    var stages: ReleaseStageLookup = .empty
     var numbered = false
     var now: Date = .now
     var calendar: Calendar = .current
@@ -14,7 +16,7 @@ struct RuntimeTable {
         let header = ["Runtime", "Build", "Arch", "Size", "Last used"]
         let rows = runtimes.map { runtime in
             [
-                runtime.name,
+                runtime.name(stage: stages.stage(of: runtime)),
                 runtime.build,
                 architecture(of: runtime),
                 runtime.sizeBytes.map { $0.fileSize(locale: locale) } ?? "-",

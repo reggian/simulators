@@ -4,20 +4,26 @@ import SimulatorsKit
 /// Works out which runtimes to uninstall (from arguments or by asking), confirms, and deletes them.
 struct UninstallFlow {
     private let installedRuntimes: InstalledRuntimeService
+    private let availableRuntimes: AvailableRuntimeService
     private let uninstaller: RuntimeUninstaller
     private let remounter: RuntimeRemounter
     private let terminal: any Terminal
     private let locale: Locale
+    /// Beta and RC labels for names; empty until ``run(queries:assumeYes:dryRun:)`` loads them.
+    private var stages = ReleaseStageLookup.empty
 
-    /// - Parameter remounter: Brings back runtimes whose files `simctl` kept. Defaults to one
-    ///   using `runner`.
+    /// - Parameters:
+    ///   - indexLoader: Apple's runtime index, only used to label betas and RCs.
+    ///   - remounter: Brings back runtimes whose files `simctl` kept. Defaults to one using `runner`.
     init(
         runner: any CommandRunner = ProcessCommandRunner(),
+        indexLoader: any RuntimeIndexLoader = AppleRuntimeIndexLoader(),
         remounter: RuntimeRemounter? = nil,
         terminal: any Terminal,
         locale: Locale = .current
     ) {
         self.installedRuntimes = InstalledRuntimeService(runner: runner)
+        self.availableRuntimes = AvailableRuntimeService(loader: indexLoader)
         self.uninstaller = RuntimeUninstaller(runner: runner)
         self.remounter = remounter ?? RuntimeRemounter(runner: runner)
         self.terminal = terminal
@@ -25,7 +31,15 @@ struct UninstallFlow {
     }
 
     func run(queries: [String], assumeYes: Bool, dryRun: Bool) async throws {
+        async let stages = ReleaseStageLookup.load(from: availableRuntimes, timeout: .seconds(3))
         let runtimes = try await installedRuntimes.installedRuntimes()
+
+        var labelled = self
+        labelled.stages = await stages
+        try await labelled.run(queries: queries, in: runtimes, assumeYes: assumeYes, dryRun: dryRun)
+    }
+
+    private func run(queries: [String], in runtimes: [InstalledRuntime], assumeYes: Bool, dryRun: Bool) async throws {
         let selected = queries.isEmpty
             ? try pick(from: runtimes.filter(\.isDeletable), prompt: "Select runtimes to uninstall")
             : try resolve(queries, in: runtimes)
@@ -82,7 +96,7 @@ struct UninstallFlow {
         do {
             try await uninstaller.uninstall(runtime)
         } catch let kept as RuntimeAssetKept {
-            terminal.write("  simctl left its files behind. Waiting for macOS to register \(runtime.name) again…")
+            terminal.write("  simctl left its files behind. Waiting for macOS to register \(name(of: runtime)) again…")
             guard let remounted = try await remounter.remount(runtime) else {
                 terminal.write("  It isn't back yet.")
                 throw kept
@@ -96,7 +110,7 @@ struct UninstallFlow {
         let size = runtime.sizeBytes.map { " (\($0.fileSize(locale: locale)))" } ?? ""
         let location = kept.assetPath.map { " in \($0)" } ?? ""
         return "  Its files\(size) are still\(location). To free them, run "
-            + "`xcrun simctl runtime scan-and-mount`, wait until \(runtime.name) is back in "
+            + "`xcrun simctl runtime scan-and-mount`, wait until \(name(of: runtime)) is back in "
             + "`simulators list` (it can take a while), and uninstall it again."
     }
 
@@ -120,7 +134,7 @@ struct UninstallFlow {
         }
 
         if let undeletable = selected.first(where: { !$0.isDeletable }) {
-            throw UninstallError.notDeletable(undeletable.name)
+            throw UninstallError.notDeletable(name(of: undeletable))
         }
         return selected.uniqued()
     }
@@ -134,7 +148,7 @@ struct UninstallFlow {
             return []
         }
 
-        let table = RuntimeTable(runtimes: candidates, numbered: true, locale: locale).render()
+        let table = RuntimeTable(runtimes: candidates, stages: stages, numbered: true, locale: locale).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 
@@ -153,7 +167,11 @@ struct UninstallFlow {
     // MARK: Text
 
     private func describe(_ runtime: InstalledRuntime) -> String {
-        "\(runtime.name) (\(runtime.build))"
+        "\(name(of: runtime)) (\(runtime.build))"
+    }
+
+    private func name(of runtime: InstalledRuntime) -> String {
+        runtime.name(stage: stages.stage(of: runtime))
     }
 
     private func totalSize(of runtimes: [InstalledRuntime]) -> String {

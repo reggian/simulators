@@ -132,6 +132,18 @@ struct UninstallFlowTests {
         #expect(!terminal.output.contains("Done."))
     }
 
+    @Test("Labels betas it knows from Apple's index")
+    func labelsBetas() async throws {
+        let index = StubIndexLoader(entries: [
+            .init(platform: "iphoneos", name: "iOS 27.2 beta 4 Simulator Runtime", version: "27.2", build: "24B91016s", architectures: ["arm64"], fileSize: 1),
+        ])
+        let (sut, _, terminal) = makeSUT(isInteractive: false, index: index)
+
+        try await sut.run(queries: ["24B91016s"], assumeYes: false, dryRun: true)
+
+        #expect(terminal.output == "Would uninstall iOS 27.2 beta 4 (iPhone19-4) (24B91016s)")
+    }
+
     @Test("A dry run shows what would be uninstalled and deletes nothing")
     func dryRun() async throws {
         let (sut, runner, terminal) = makeSUT(isInteractive: false)
@@ -147,12 +159,14 @@ struct UninstallFlowTests {
     private func makeSUT(
         isInteractive: Bool = true,
         answers: [String] = [],
-        deleteFailures: [String: any Error] = [:]
+        deleteFailures: [String: any Error] = [:],
+        index: StubIndexLoader = StubIndexLoader(entries: [])
     ) -> (UninstallFlow, RecordingCommandRunner, ScriptedTerminal) {
         let runner = RecordingCommandRunner(runtimeListJSON: runtimeListJSON, deleteFailures: deleteFailures)
         let terminal = ScriptedTerminal(isInteractive: isInteractive, answers: answers)
         let sut = UninstallFlow(
             runner: runner,
+            indexLoader: index,
             remounter: RuntimeRemounter(runner: runner, timeout: .zero),
             terminal: terminal,
             locale: Locale(identifier: "en_US_POSIX")
