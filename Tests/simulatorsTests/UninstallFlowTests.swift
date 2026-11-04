@@ -6,11 +6,12 @@ import SimulatorsKit
 @Suite("Uninstall")
 struct UninstallFlowTests {
     /// iOS 17.2, iOS 27.2 and its iPhone19-4 variant, and a bundled watchOS runtime that can't be deleted.
+    /// Only iOS 17.2 reports itself ready, so only it can come back after a remount.
     private let runtimeListJSON = """
     {
       "A": { "identifier": "A", "runtimeIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-17-2",
              "platformIdentifier": "com.apple.platform.iphonesimulator", "version": "17.2", "build": "21C62",
-             "sizeBytes": 7000000000, "deletable": true },
+             "sizeBytes": 7000000000, "deletable": true, "state": "Ready" },
       "B": { "identifier": "B", "runtimeIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-27-2",
              "platformIdentifier": "com.apple.platform.iphonesimulator", "version": "27.2", "build": "24B8117",
              "sizeBytes": 8000000000, "deletable": true },
@@ -101,18 +102,33 @@ struct UninstallFlowTests {
         #expect(runner.deletedIdentifiers.isEmpty)
     }
 
-    @Test("Carries on after a runtime fails and counts only what was freed")
-    func partialFailure() async throws {
-        let (sut, runner, terminal) = makeSUT(
-            answers: ["1 2", "y"],
-            deleteFailures: ["A": RuntimeAssetKept(assetPath: "/System/Library/AssetsV2/a.asset")]
-        )
+    @Test("When simctl keeps a runtime's files, waits for it to come back and deletes it again")
+    func reclaimsKeptFiles() async throws {
+        let (sut, runner, terminal) = makeSUT(answers: ["1 2", "y"], deleteFailures: ["A": kept])
 
-        await #expect(throws: UninstallError.incomplete(failed: ["iOS 17.2 (21C62)"], freed: "8 GB")) {
+        try await sut.run(queries: [], assumeYes: false, dryRun: false)
+
+        #expect(runner.deletedIdentifiers == ["A", "A", "B"])
+        #expect(runner.commands.contains(["/usr/bin/xcrun", "simctl", "runtime", "scan-and-mount"]))
+        #expect(terminal.output.contains("Waiting for macOS to register iOS 17.2 again…"))
+        #expect(terminal.output.contains("Done. Freed 15 GB."))
+    }
+
+    @Test("Carries on when a runtime's files stay, and counts only what was freed", arguments: [
+        ("1 2", ["A", "B"], "7 GB"),
+        ("2", ["B"], nil),
+    ] as [(String, [String], String?)])
+    func filesStay(selection: String, deleted: [String], freed: String?) async throws {
+        // iOS 27.2 never reports itself ready again, so the retry gives up.
+        let (sut, runner, terminal) = makeSUT(answers: [selection, "y"], deleteFailures: ["B": kept])
+
+        await #expect(throws: UninstallError.incomplete(failed: ["iOS 27.2 (24B8117)"], freed: freed)) {
             try await sut.run(queries: [], assumeYes: false, dryRun: false)
         }
-        #expect(runner.deletedIdentifiers == ["A", "B"])
-        #expect(terminal.output.contains("left its files (7 GB) in /System/Library/AssetsV2/a.asset. To free them, run `xcrun simctl runtime scan-and-mount`"))
+        #expect(runner.deletedIdentifiers == deleted)
+        #expect(terminal.output.contains(
+            "Its files (8 GB) are still in /System/Library/AssetsV2/a.asset. To free them, run `xcrun simctl runtime scan-and-mount`"
+        ))
         #expect(!terminal.output.contains("Done."))
     }
 
@@ -126,6 +142,8 @@ struct UninstallFlowTests {
         #expect(terminal.output == "Would uninstall iOS 17.2 (21C62)")
     }
 
+    private let kept = RuntimeAssetKept(assetPath: "/System/Library/AssetsV2/a.asset")
+
     private func makeSUT(
         isInteractive: Bool = true,
         answers: [String] = [],
@@ -133,7 +151,12 @@ struct UninstallFlowTests {
     ) -> (UninstallFlow, RecordingCommandRunner, ScriptedTerminal) {
         let runner = RecordingCommandRunner(runtimeListJSON: runtimeListJSON, deleteFailures: deleteFailures)
         let terminal = ScriptedTerminal(isInteractive: isInteractive, answers: answers)
-        let sut = UninstallFlow(runner: runner, terminal: terminal, locale: Locale(identifier: "en_US_POSIX"))
+        let sut = UninstallFlow(
+            runner: runner,
+            remounter: RuntimeRemounter(runner: runner, timeout: .zero),
+            terminal: terminal,
+            locale: Locale(identifier: "en_US_POSIX")
+        )
         return (sut, runner, terminal)
     }
 }

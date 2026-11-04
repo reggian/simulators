@@ -5,12 +5,21 @@ import SimulatorsKit
 struct UninstallFlow {
     private let installedRuntimes: InstalledRuntimeService
     private let uninstaller: RuntimeUninstaller
+    private let remounter: RuntimeRemounter
     private let terminal: any Terminal
     private let locale: Locale
 
-    init(runner: any CommandRunner = ProcessCommandRunner(), terminal: any Terminal, locale: Locale = .current) {
+    /// - Parameter remounter: Brings back runtimes whose files `simctl` kept. Defaults to one
+    ///   using `runner`.
+    init(
+        runner: any CommandRunner = ProcessCommandRunner(),
+        remounter: RuntimeRemounter? = nil,
+        terminal: any Terminal,
+        locale: Locale = .current
+    ) {
         self.installedRuntimes = InstalledRuntimeService(runner: runner)
         self.uninstaller = RuntimeUninstaller(runner: runner)
+        self.remounter = remounter ?? RuntimeRemounter(runner: runner)
         self.terminal = terminal
         self.locale = locale
     }
@@ -48,7 +57,7 @@ struct UninstallFlow {
         for runtime in runtimes {
             terminal.write("Uninstalling \(describe(runtime))…")
             do {
-                try await uninstaller.uninstall(runtime)
+                try await uninstallReclaimingFiles(runtime)
                 freed.append(runtime)
             } catch let kept as RuntimeAssetKept {
                 terminal.write(describe(kept, of: runtime))
@@ -65,10 +74,28 @@ struct UninstallFlow {
         terminal.write("Done. Freed \(totalSize(of: freed)).")
     }
 
+    /// Uninstalls `runtime`. When `simctl` unregisters it but keeps its files, waits for it to be
+    /// registered again and deletes it once more, which removes the files.
+    ///
+    /// - Throws: ``RuntimeAssetKept`` when the files are still there after that.
+    private func uninstallReclaimingFiles(_ runtime: InstalledRuntime) async throws {
+        do {
+            try await uninstaller.uninstall(runtime)
+        } catch let kept as RuntimeAssetKept {
+            terminal.write("  simctl left its files behind. Waiting for macOS to register \(runtime.name) again…")
+            guard let remounted = try await remounter.remount(runtime) else {
+                terminal.write("  It isn't back yet.")
+                throw kept
+            }
+            terminal.write("  Uninstalling it again…")
+            try await uninstaller.uninstall(remounted)
+        }
+    }
+
     private func describe(_ kept: RuntimeAssetKept, of runtime: InstalledRuntime) -> String {
         let size = runtime.sizeBytes.map { " (\($0.fileSize(locale: locale)))" } ?? ""
         let location = kept.assetPath.map { " in \($0)" } ?? ""
-        return "  simctl unregistered it but left its files\(size)\(location). To free them, run "
+        return "  Its files\(size) are still\(location). To free them, run "
             + "`xcrun simctl runtime scan-and-mount`, wait until \(runtime.name) is back in "
             + "`simulators list` (it can take a while), and uninstall it again."
     }
