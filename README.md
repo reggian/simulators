@@ -25,6 +25,9 @@ there's no release yet; `--all` shows every build. `install` downloads through
 runtimes that install without signing in to an Apple account. Like `uninstall`, it asks first and
 shows the total size; `--yes` skips the question.
 
+Installed runtimes don't record whether they're a beta, so `list` and `uninstall` look the build up
+in Apple's index to label betas and release candidates. Offline, they show the plain version.
+
 Run a command without a runtime and it shows a numbered list to pick from:
 
 ```text
