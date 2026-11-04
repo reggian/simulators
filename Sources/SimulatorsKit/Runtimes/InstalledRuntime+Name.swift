@@ -1,8 +1,14 @@
 extension InstalledRuntime {
     /// A display name such as `iOS 27.2`, or `iOS 27.2 (iPhone19-4)` for a device-specific runtime.
     public var name: String {
-        let base = "\(platform.name) \(version)"
-        return variant.map { "\(base) (\($0))" } ?? base
+        name(stage: nil)
+    }
+
+    /// The display name with the release stage when known, such as `iOS 27.3 beta` or
+    /// `iOS 27.2 beta 4 (iPhone19-4)`.
+    public func name(stage: ReleaseStage?) -> String {
+        let version = [platform.name, version, stage?.label].compactMap { $0 }.joined(separator: " ")
+        return variant.map { "\(version) (\($0))" } ?? version
     }
 
     /// The device-specific part of the runtime identifier, if any.
