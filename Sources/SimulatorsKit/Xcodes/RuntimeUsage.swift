@@ -10,7 +10,7 @@ public struct RuntimeUsage: Sendable {
     public static let empty = RuntimeUsage(choices: [])
 
     /// - Parameter choices: Per Xcode and SDK, the platform and runtime build it picks.
-    init(choices: [(xcode: InstalledXcode, platform: SimulatorPlatform, build: String)]) {
+    public init(choices: [(xcode: InstalledXcode, platform: SimulatorPlatform, build: String)]) {
         var xcodesByRuntime: [Key: [InstalledXcode]] = [:]
         for choice in choices {
             let key = Key(platform: choice.platform, build: choice.build)

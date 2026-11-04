@@ -25,8 +25,9 @@ struct List: AsyncParsableCommand {
         } else if installed.isEmpty {
             print("No simulator runtimes installed.")
         } else {
-            let stages = await ReleaseStageLookup.load(from: AvailableRuntimeService(), timeout: .seconds(3))
-            print(RuntimeTable(runtimes: installed, stages: stages).render())
+            async let stages = ReleaseStageLookup.load(from: AvailableRuntimeService(), timeout: .seconds(3))
+            async let usage = (try? await RuntimeUsageService().usage()) ?? .empty
+            print(RuntimeTable(runtimes: installed, stages: await stages, usage: await usage).render())
         }
     }
 

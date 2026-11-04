@@ -41,6 +41,27 @@ struct RuntimeTableTests {
         #expect(sut.render().contains("iOS 27.3 beta  24C5037i"))
     }
 
+    @Test("Shows which Xcodes use each runtime")
+    func usedBy() {
+        let ios = SimulatorPlatform(identifier: "com.apple.platform.iphonesimulator")
+        let usage = RuntimeUsage(choices: [
+            (InstalledXcode(path: "/Applications/Xcode-27.2.0.app", version: "27.2", build: "27B52"), ios, "24B8117"),
+        ])
+        var sut = makeSUT(runtimes: [
+            makeRuntime(version: "26.5", build: "23F77", architectures: ["arm64"], sizeBytes: 8_490_000_000, lastUsedAt: nil),
+            makeRuntime(version: "27.2", build: "24B8117", architectures: ["arm64"], sizeBytes: 8_320_000_000, lastUsedAt: nil),
+        ])
+        sut.usage = usage
+
+        #expect(sut.render() == """
+        Runtime   Build    Arch   Size     Last used  Used by
+        iOS 26.5  23F77    arm64  8.49 GB  -
+        iOS 27.2  24B8117  arm64  8.32 GB  -          Xcode 27.2
+
+        2 runtimes, 16.81 GB
+        """)
+    }
+
     @Test("Describes when a runtime was last used in calendar days", arguments: [
         (nil, "-"),
         (0, "today"),
