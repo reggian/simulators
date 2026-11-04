@@ -18,6 +18,9 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
     public let isDeletable: Bool
     /// Whether the runtime is mounted and usable (`simctl` reports its state as `Ready`).
     public let isReady: Bool
+    /// Where the runtime's files are: a disk image, or a MobileAsset folder in
+    /// `/System/Library/AssetsV2`.
+    public let path: String?
 
     public init(
         identifier: String,
@@ -29,7 +32,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         sizeBytes: Int64?,
         lastUsedAt: Date?,
         isDeletable: Bool = true,
-        isReady: Bool = true
+        isReady: Bool = true,
+        path: String? = nil
     ) {
         self.identifier = identifier
         self.runtimeIdentifier = runtimeIdentifier
@@ -41,6 +45,7 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         self.lastUsedAt = lastUsedAt
         self.isDeletable = isDeletable
         self.isReady = isReady
+        self.path = path
     }
 
     public init(from decoder: any Decoder) throws {
@@ -56,6 +61,7 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         // Treat a missing flag as "not deletable": the safe default for a tool that deletes things.
         isDeletable = try container.decodeIfPresent(Bool.self, forKey: .deletable) ?? false
         isReady = try container.decodeIfPresent(String.self, forKey: .state) == "Ready"
+        path = try container.decodeIfPresent(String.self, forKey: .path)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -69,5 +75,6 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         case lastUsedAt
         case deletable
         case state
+        case path
     }
 }
