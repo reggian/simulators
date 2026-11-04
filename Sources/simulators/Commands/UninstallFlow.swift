@@ -10,10 +10,9 @@ struct UninstallFlow {
     private let remounter: RuntimeRemounter
     private let terminal: any Terminal
     private let locale: Locale
-    /// Beta and RC labels, and which Xcodes use which runtime; empty until
+    /// Names runtimes with beta labels and the Xcodes that use them; knows neither until
     /// ``run(queries:assumeYes:dryRun:)`` loads them.
-    private var stages = ReleaseStageLookup.empty
-    private var usage = RuntimeUsage.empty
+    private var describer = RuntimeDescriber()
 
     /// - Parameters:
     ///   - indexLoader: Apple's runtime index, only used to label betas and RCs.
@@ -42,8 +41,7 @@ struct UninstallFlow {
         let runtimes = try await installedRuntimes.installedRuntimes()
 
         var labelled = self
-        labelled.stages = await stages
-        labelled.usage = await usage
+        labelled.describer = RuntimeDescriber(stages: await stages, usage: await usage)
         try await labelled.run(queries: queries, in: runtimes, assumeYes: assumeYes, dryRun: dryRun)
     }
 
@@ -156,7 +154,7 @@ struct UninstallFlow {
             return []
         }
 
-        let table = RuntimeTable(runtimes: candidates, stages: stages, usage: usage, numbered: true, locale: locale).render()
+        let table = RuntimeTable(runtimes: candidates, stages: describer.stages, usage: describer.usage, numbered: true, locale: locale).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 
@@ -168,7 +166,7 @@ struct UninstallFlow {
 
         terminal.write("About to uninstall:")
         runtimes.forEach { terminal.write("  \(describe($0))\(usedBy($0))") }
-        if runtimes.contains(where: { !usage.xcodes(using: $0).isEmpty }) {
+        if runtimes.contains(where: { !describer.usage.xcodes(using: $0).isEmpty }) {
             terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.")
         }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
@@ -178,17 +176,15 @@ struct UninstallFlow {
     // MARK: Text
 
     private func describe(_ runtime: InstalledRuntime) -> String {
-        "\(name(of: runtime)) (\(runtime.build))"
+        describer.describe(runtime)
     }
 
-    /// `, used by Xcode 27.2`, or nothing when no installed Xcode uses `runtime`.
     private func usedBy(_ runtime: InstalledRuntime) -> String {
-        let xcodes = usage.xcodes(using: runtime)
-        return xcodes.isEmpty ? "" : ", used by " + xcodes.map(\.name).joined(separator: ", ")
+        describer.usedBy(runtime)
     }
 
     private func name(of runtime: InstalledRuntime) -> String {
-        runtime.name(stage: stages.stage(of: runtime))
+        describer.name(of: runtime)
     }
 
     private func totalSize(of runtimes: [InstalledRuntime]) -> String {
