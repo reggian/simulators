@@ -1,9 +1,9 @@
 import Foundation
 import SimulatorsKit
 
-/// Answers `simctl runtime list -j` with canned JSON, fails a delete once or an attached command if
-/// told to, accepts every other command with empty output, and records everything it was asked to
-/// run.
+/// Answers `simctl runtime list -j` and other commands with canned output, fails a delete once or an
+/// attached command if told to, answers anything else with empty output, and records everything it
+/// was asked to run.
 final class RecordingCommandRunner: CommandRunner, @unchecked Sendable {
     static let listCommand = ["/usr/bin/xcrun", "simctl", "runtime", "list", "-j"]
     private static let deleteCommand = ["/usr/bin/xcrun", "simctl", "runtime", "delete"]
@@ -11,6 +11,7 @@ final class RecordingCommandRunner: CommandRunner, @unchecked Sendable {
     private let runtimeListJSON: String
     private var deleteFailures: [String: any Error]
     private let attachedFailures: [String: any Error]
+    private let outputs: [[String]: String]
     private let lock = NSLock()
     private var recorded: [[String]] = []
     private var recordedAttached: [[String]] = []
@@ -18,14 +19,17 @@ final class RecordingCommandRunner: CommandRunner, @unchecked Sendable {
     /// - Parameters:
     ///   - deleteFailures: Errors to throw the first time the runtime with that UUID is deleted.
     ///   - attachedFailures: Errors to throw for attached commands with that argument.
+    ///   - outputs: Output for other commands.
     init(
         runtimeListJSON: String = "{}",
         deleteFailures: [String: any Error] = [:],
-        attachedFailures: [String: any Error] = [:]
+        attachedFailures: [String: any Error] = [:],
+        outputs: [[String]: String] = [:]
     ) {
         self.runtimeListJSON = runtimeListJSON
         self.deleteFailures = deleteFailures
         self.attachedFailures = attachedFailures
+        self.outputs = outputs
     }
 
     var commands: [[String]] {
@@ -50,7 +54,8 @@ final class RecordingCommandRunner: CommandRunner, @unchecked Sendable {
             return deleteFailures.removeValue(forKey: identifier)
         }
         if let failure { throw failure }
-        return command == Self.listCommand ? Data(runtimeListJSON.utf8) : Data()
+        if command == Self.listCommand { return Data(runtimeListJSON.utf8) }
+        return Data((outputs[command] ?? "").utf8)
     }
 
     func runAttached(_ executable: String, _ arguments: [String]) async throws {
