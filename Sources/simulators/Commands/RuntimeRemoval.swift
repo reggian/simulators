@@ -20,9 +20,9 @@ struct RuntimeRemoval {
         guard terminal.isInteractive else { throw UninstallError.confirmationRequired }
 
         terminal.write("About to uninstall:")
-        runtimes.forEach { terminal.write("  \(describer.describe($0))\(describer.usedBy($0))") }
+        runtimes.forEach { terminal.write("  \(describer.describe($0))" + terminal.styler(describer.usedBy($0), .yellow)) }
         if runtimes.contains(where: { !describer.usage.xcodes(using: $0).isEmpty }) {
-            terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.")
+            terminal.write("Xcode uses these runtimes to build, preview and run simulators of that OS version.", .yellow)
         }
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
         let marker = dryRun ? " (dry run)" : ""
@@ -41,10 +41,10 @@ struct RuntimeRemoval {
                 try await uninstallReclaimingFiles(runtime)
                 freed.append(runtime)
             } catch let kept as RuntimeAssetKept {
-                terminal.write(describe(kept, of: runtime))
+                terminal.write(describe(kept, of: runtime), .yellow)
                 failed.append(describer.describe(runtime))
             } catch {
-                terminal.write("  \(error.localizedDescription)")
+                terminal.write("  \(error.localizedDescription)", .red)
                 failed.append(describer.describe(runtime))
             }
         }
@@ -52,7 +52,7 @@ struct RuntimeRemoval {
         guard failed.isEmpty else {
             throw UninstallError.incomplete(failed: failed, freed: freed.isEmpty ? nil : totalSize(of: freed))
         }
-        terminal.write("Done. Freed \(totalSize(of: freed)).")
+        terminal.write("Done. Freed \(totalSize(of: freed)).", .green)
     }
 
     /// Uninstalls `runtime`. When `simctl` unregisters it but keeps its files, waits for it to be
@@ -63,9 +63,9 @@ struct RuntimeRemoval {
         do {
             try await uninstaller.uninstall(runtime)
         } catch let kept as RuntimeAssetKept {
-            terminal.write("  simctl left its files behind. Waiting for macOS to register \(describer.name(of: runtime)) again…")
+            terminal.write("  simctl left its files behind. Waiting for macOS to register \(describer.name(of: runtime)) again…", .yellow)
             guard let remounted = try await remounter.remount(runtime) else {
-                terminal.write("  It isn't back yet.")
+                terminal.write("  It isn't back yet.", .yellow)
                 throw kept
             }
             terminal.write("  Uninstalling it again…")

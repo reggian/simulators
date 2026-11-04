@@ -57,7 +57,9 @@ struct UninstallFlow {
 
         // A dry run in a terminal rehearses the whole flow; without one (or with --yes) it reports.
         if dryRun && (assumeYes || !terminal.isInteractive) {
-            selected.forEach { terminal.write("Would uninstall \(describer.describe($0))\(describer.usedBy($0))") }
+            selected.forEach {
+                terminal.write("Would uninstall \(describer.describe($0))" + terminal.styler(describer.usedBy($0), .yellow))
+            }
             return
         }
 
@@ -113,7 +115,14 @@ struct UninstallFlow {
             return []
         }
 
-        let table = RuntimeTable(runtimes: candidates, stages: describer.stages, usage: describer.usage, numbered: true, locale: locale).render()
+        let table = RuntimeTable(
+            runtimes: candidates,
+            stages: describer.stages,
+            usage: describer.usage,
+            numbered: true,
+            styler: terminal.styler,
+            locale: locale
+        ).render()
         return NumberedPicker(terminal: terminal).pick(candidates, table: table, prompt: prompt)
     }
 }

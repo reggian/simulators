@@ -4,6 +4,7 @@ import Foundation
 /// A terminal that answers prompts from a script and records what was written.
 final class ScriptedTerminal: Terminal, @unchecked Sendable {
     let isInteractive: Bool
+    let styler = Styler.plain
     private let lock = NSLock()
     private var answers: [String]
     private var written: [String] = []

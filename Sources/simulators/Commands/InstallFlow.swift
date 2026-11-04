@@ -84,13 +84,13 @@ struct InstallFlow {
             do {
                 try await installer.install(runtime, variant: download.variant)
             } catch {
-                terminal.write("  \(error.localizedDescription)")
+                terminal.write("  \(error.localizedDescription)", .red)
                 failed.append(describe(runtime))
             }
         }
 
         guard failed.isEmpty else { throw InstallError.incomplete(failed: failed) }
-        terminal.write("Done.")
+        terminal.write("Done.", .green)
     }
 
     private func download(of runtime: AvailableRuntime, variant: ArchitectureVariant?) throws -> RuntimeDownload {
@@ -117,10 +117,11 @@ struct InstallFlow {
             terminal.write("All current runtimes are installed. Run `simulators list --available --all` for others.")
             return []
         }
-        var table = AvailableRuntimeTable(runtimes: notInstalled, numbered: true, locale: locale).render()
+        var table = AvailableRuntimeTable(runtimes: notInstalled, numbered: true, styler: terminal.styler, locale: locale).render()
         let hidden = candidates.count - notInstalled.count
         if hidden > 0 {
-            table += "\n\n" + (hidden == 1 ? "1 installed runtime isn't shown." : "\(hidden) installed runtimes aren't shown.")
+            let note = hidden == 1 ? "1 installed runtime isn't shown." : "\(hidden) installed runtimes aren't shown."
+            table += "\n\n" + terminal.styler(note, .dim)
         }
         return NumberedPicker(terminal: terminal).pick(notInstalled, table: table, prompt: "Select runtimes to install")
     }
@@ -142,7 +143,7 @@ struct InstallFlow {
                 guard terminal.isInteractive else {
                     throw InstallError.ambiguous(query.description, matches: matches.map(describe))
                 }
-                let table = AvailableRuntimeTable(runtimes: matches, installed: installed, numbered: true, locale: locale).render()
+                let table = AvailableRuntimeTable(runtimes: matches, installed: installed, numbered: true, styler: terminal.styler, locale: locale).render()
                 selected += NumberedPicker(terminal: terminal)
                     .pick(matches, table: table, prompt: "\"\(query.description)\" matches several runtimes. Select")
             }
