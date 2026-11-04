@@ -25,6 +25,7 @@ struct InstalledRuntimeServiceTests {
         #expect(runtimes.map(\.build) == [
             "21C62", "23F77", "24A94425", "24B8117", "24B91016s", "23T570", "24R362", "24S118",
         ])
+        #expect(runtimes.map(\.isReady) == Array(repeating: true, count: 8))
     }
 
     @Test("Decodes a runtime with optional fields missing and an unknown platform")
@@ -48,6 +49,7 @@ struct InstalledRuntimeServiceTests {
         #expect(runtime.architectures.isEmpty)
         #expect(runtime.sizeBytes == nil)
         #expect(runtime.lastUsedAt == nil)
+        #expect(!runtime.isReady)
     }
 
     @Test("Skips a runtime simctl is still registering instead of failing")

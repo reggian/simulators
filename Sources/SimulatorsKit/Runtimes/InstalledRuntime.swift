@@ -16,6 +16,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
     public let lastUsedAt: Date?
     /// Whether `simctl` can delete it. Runtimes bundled inside an Xcode can't be.
     public let isDeletable: Bool
+    /// Whether the runtime is mounted and usable (`simctl` reports its state as `Ready`).
+    public let isReady: Bool
 
     public init(
         identifier: String,
@@ -26,7 +28,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         architectures: [String],
         sizeBytes: Int64?,
         lastUsedAt: Date?,
-        isDeletable: Bool = true
+        isDeletable: Bool = true,
+        isReady: Bool = true
     ) {
         self.identifier = identifier
         self.runtimeIdentifier = runtimeIdentifier
@@ -37,6 +40,7 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         self.sizeBytes = sizeBytes
         self.lastUsedAt = lastUsedAt
         self.isDeletable = isDeletable
+        self.isReady = isReady
     }
 
     public init(from decoder: any Decoder) throws {
@@ -51,6 +55,7 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         lastUsedAt = try container.decodeIfPresent(Date.self, forKey: .lastUsedAt)
         // Treat a missing flag as "not deletable": the safe default for a tool that deletes things.
         isDeletable = try container.decodeIfPresent(Bool.self, forKey: .deletable) ?? false
+        isReady = try container.decodeIfPresent(String.self, forKey: .state) == "Ready"
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -63,5 +68,6 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         case sizeBytes
         case lastUsedAt
         case deletable
+        case state
     }
 }
