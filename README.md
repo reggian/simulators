@@ -39,6 +39,9 @@ in Apple's index to label betas and release candidates. Offline, they show the p
 It keeps runtimes an installed Xcode uses, and says so. You pick from a numbered list (Enter takes
 all), then confirm, as with `uninstall`.
 
+Output is colored on a terminal; set `NO_COLOR` for plain text. Pipes and files always get plain
+text.
+
 `install`, `uninstall` and `prune` take `--dry-run`. In a terminal it goes through the same steps,
 picking and confirming included, and changes nothing at the end. Without a terminal, or with
 `--yes`, it only reports what would happen.
