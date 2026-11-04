@@ -43,6 +43,23 @@ struct PruneRuleTests {
         #expect(plan.keptInUse == [PruneCandidate(runtime: watchRC, reason: .superseded(by: watchRelease))])
     }
 
+    @Test("Also offers runtimes not used for longer than the limit, never ones without a date")
+    func unusedRuntimes() {
+        let now = Date(timeIntervalSince1970: 1_793_000_000)
+        let day: TimeInterval = 24 * 60 * 60
+        let stale = runtime(Self.iOS, "iOS-17-2", "17.2", "21C62", lastUsedAt: now.addingTimeInterval(-200 * day))
+        let recent = runtime(Self.iOS, "iOS-26-5", "26.5", "23F77", lastUsedAt: now.addingTimeInterval(-10 * day))
+        let staleAndSuperseded = runtime(Self.iOS, "iOS-27-2", "27.2", "24B114", lastUsedAt: now.addingTimeInterval(-300 * day))
+
+        let plan = PruneRule(unusedForDays: 180, now: now)
+            .plan(for: [stale, recent, staleAndSuperseded, release, device], stages: stages, usage: .empty)
+
+        #expect(plan.candidates == [
+            PruneCandidate(runtime: stale, reason: .unused(lastUsedAt: now.addingTimeInterval(-200 * day))),
+            PruneCandidate(runtime: staleAndSuperseded, reason: .superseded(by: release)),
+        ])
+    }
+
     @Test("Never offers a runtime simctl can't delete")
     func skipsUndeletable() {
         let bundled = runtime(Self.iOS, "iOS-27-2", "27.2", "24B5110a", deletable: false)
@@ -81,7 +98,8 @@ private func runtime(
     _ identifier: String,
     _ version: String,
     _ build: String,
-    deletable: Bool = true
+    deletable: Bool = true,
+    lastUsedAt: Date? = nil
 ) -> InstalledRuntime {
     InstalledRuntime(
         identifier: build,
@@ -91,7 +109,7 @@ private func runtime(
         build: build,
         architectures: ["arm64"],
         sizeBytes: 8_000_000_000,
-        lastUsedAt: nil,
+        lastUsedAt: lastUsedAt,
         isDeletable: deletable
     )
 }
