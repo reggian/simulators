@@ -14,8 +14,8 @@ into another command. `simulators` does that part for you.
 ```text
 simulators list                           installed runtimes
 simulators list --available [--all]       runtimes Apple offers for download
-simulators install [<runtime> ...]        download and install: iOS 27.2, iOS or 24B8117
-simulators uninstall [<runtime> ...]      uninstall, by name, build or UUID
+simulators install [<runtime> ...]        download and install: iOS 27.2, iOS 27.3 beta, iOS or 24B8117
+simulators uninstall [<runtime> ...]      uninstall: iOS 27.2, "iOS 27.3 beta", 24B8117 or a UUID
 simulators prune [--unused-for <days>]    uninstall superseded and long-unused runtimes
 ```
 

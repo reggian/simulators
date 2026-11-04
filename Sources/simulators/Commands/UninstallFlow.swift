@@ -84,7 +84,7 @@ struct UninstallFlow {
     private func resolve(_ queries: [String], in runtimes: [InstalledRuntime]) throws -> [InstalledRuntime] {
         var selected: [InstalledRuntime] = []
         for query in queries {
-            let matches = runtimes.filter { $0.matches(query) }
+            let matches = runtimes.filter { $0.matches(query, stage: describer.stages.stage(of: $0)) }
             switch matches.count {
             case 0:
                 throw UninstallError.noMatch(query)

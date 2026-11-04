@@ -25,6 +25,23 @@ struct InstalledRuntimeMatchingTests {
         #expect(!regular.matches("iOS 27.2 (iPhone19-4)"))
     }
 
+    @Test("Matches the beta or RC label when the stage is known", arguments: [
+        (ReleaseStage.beta(4), "iOS 27.2 beta 4", true),
+        (.beta(nil), "ios 27.2 BETA", true),
+        (.releaseCandidate, "iOS 27.2 rc", true),
+        (.beta(4), "iOS 27.2 beta 3", false),
+        (.release, "iOS 27.2 beta", false),
+    ])
+    func matchesLabel(stage: ReleaseStage, query: String, expected: Bool) {
+        #expect(regular.matches(query, stage: stage) == expected)
+    }
+
+    @Test("Matches a device-specific runtime's full name with its label")
+    func deviceSpecificLabel() {
+        #expect(deviceSpecific.matches("iOS 27.2 beta 4 (iPhone19-4)", stage: .beta(4)))
+        #expect(!regular.matches("iOS 27.2 beta 4 (iPhone19-4)", stage: .beta(4)))
+    }
+
     @Test("Doesn't match partial input", arguments: ["iOS", "27.2", "24B81", "iOS 27"])
     func rejectsPartial(query: String) {
         #expect(!regular.matches(query))

@@ -12,8 +12,9 @@ struct Install: AsyncParsableCommand {
     )
 
     @Argument(help: """
-        Runtimes to install: a platform and version (iOS 27.2), a platform for its newest release \
-        (iOS), or a build (24B8117).
+        Runtimes to install: a platform and version (iOS 27.2), a beta or RC of it \
+        (iOS 27.3 beta, iOS 27.2 beta 4, iOS 27.2 RC), a platform for its newest release (iOS), or \
+        a build (24B8117).
         """)
     var runtimes: [String] = []
 
