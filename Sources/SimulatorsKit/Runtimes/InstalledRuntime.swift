@@ -14,6 +14,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
     public let architectures: [String]
     public let sizeBytes: Int64?
     public let lastUsedAt: Date?
+    /// Whether `simctl` can delete it. Runtimes bundled inside an Xcode can't be.
+    public let isDeletable: Bool
 
     public init(
         identifier: String,
@@ -23,7 +25,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         build: String,
         architectures: [String],
         sizeBytes: Int64?,
-        lastUsedAt: Date?
+        lastUsedAt: Date?,
+        isDeletable: Bool = true
     ) {
         self.identifier = identifier
         self.runtimeIdentifier = runtimeIdentifier
@@ -33,6 +36,7 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         self.architectures = architectures
         self.sizeBytes = sizeBytes
         self.lastUsedAt = lastUsedAt
+        self.isDeletable = isDeletable
     }
 
     public init(from decoder: any Decoder) throws {
@@ -45,6 +49,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         architectures = try container.decodeIfPresent([String].self, forKey: .supportedArchitectures) ?? []
         sizeBytes = try container.decodeIfPresent(Int64.self, forKey: .sizeBytes)
         lastUsedAt = try container.decodeIfPresent(Date.self, forKey: .lastUsedAt)
+        // Treat a missing flag as "not deletable": the safe default for a tool that deletes things.
+        isDeletable = try container.decodeIfPresent(Bool.self, forKey: .deletable) ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -56,5 +62,6 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         case supportedArchitectures
         case sizeBytes
         case lastUsedAt
+        case deletable
     }
 }
