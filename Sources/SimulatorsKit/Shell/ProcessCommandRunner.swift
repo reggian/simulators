@@ -33,6 +33,26 @@ public struct ProcessCommandRunner: CommandRunner {
         return standardOutput
     }
 
+    public func runAttached(_ executable: String, _ arguments: [String]) async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+
+        // Without pipes, the process inherits this one's standard input, output and error.
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            process.terminationHandler = { _ in continuation.resume() }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+
+        guard process.terminationStatus == 0 else {
+            throw CommandFailure(command: [executable] + arguments, exitCode: process.terminationStatus, standardError: "")
+        }
+    }
+
     private static func readToEnd(_ handle: FileHandle) async throws -> Data {
         var data = Data()
         for try await byte in handle.bytes {

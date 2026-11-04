@@ -26,4 +26,8 @@ final class SequencedCommandRunner: CommandRunner, @unchecked Sendable {
             return next
         }
     }
+
+    func runAttached(_ executable: String, _ arguments: [String]) async throws {
+        _ = try await run(executable, arguments)
+    }
 }
