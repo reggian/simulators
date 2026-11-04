@@ -17,8 +17,19 @@ let package = Package(
         .executableTarget(
             name: "simulators",
             dependencies: [
+                "SimulatorsKit",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
+        ),
+        .target(name: "SimulatorsKit"),
+        .testTarget(
+            name: "SimulatorsKitTests",
+            dependencies: ["SimulatorsKit"],
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "simulatorsTests",
+            dependencies: ["simulators", "SimulatorsKit"]
         )
     ],
     swiftLanguageModes: [.v6]
