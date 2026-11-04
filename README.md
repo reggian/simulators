@@ -7,7 +7,13 @@ behind at 4–9 GB each. Apple's tools (`xcrun simctl runtime`, `xcodebuild -dow
 manage them, but you have to list runtimes, work out which is which, copy an identifier and paste it
 into another command. `simulators` does that part for you.
 
-> **Status:** early development. `list`, `install`, `uninstall` and `prune` work.
+## Install
+
+```sh
+brew install reggian/tap/simulators
+```
+
+Homebrew builds it from source, which needs Xcode. You need Xcode for simulators anyway.
 
 ## Commands
 
@@ -55,13 +61,15 @@ Run a command without a runtime and it shows a numbered list to pick from:
 
 ```text
 $ simulators uninstall
+#  Runtime        Build     Arch       Size     Last used  Used by
+1  iOS 17.2       21C62     universal  7.35 GB  today
+2  iOS 26.5       23F77     arm64      8.49 GB  yesterday
+3  iOS 27.2       24B8117   arm64      8.32 GB  -          Xcode 27.2
+4  iOS 27.3 beta  24C5037i  arm64      8.5 GB   -
 
- #  Runtime         Build      Size    Last used   Used by
- 1  iOS 17.2        21C62      7.4 GB  today
- 2  iOS 27.0 b3     24A5289g   8.2 GB  -
- 3  iOS 27.0 b4     24A5298h   8.3 GB  today       Xcode 27 beta 4
+4 runtimes, 32.66 GB
 
-Select runtimes to uninstall (e.g. 1 3, 2-4, all): 2
+Select runtimes to uninstall (e.g. 1 3, 2-4, all): 4
 ```
 
 ## Requirements
@@ -81,10 +89,13 @@ Most of these come from `simctl` itself; `simulators` works around what it can.
 - **Runtimes that are being registered are left out.** Right after `scan-and-mount`, `simctl` lists
   a runtime before it knows everything about it. `simulators list` leaves such a runtime out until
   `simctl` reports it in full; run it again a little later.
+- **Used by is only tested with one Xcode installed.** It asks each installed Xcode separately, and
+  `prune` keeps any runtime an Xcode uses. If you have several Xcodes and the column looks wrong,
+  please open an issue.
 
-## Building
+## Building from source
 
 ```sh
-swift build
-swift run simulators --help
+swift build -c release
+.build/release/simulators --help
 ```
