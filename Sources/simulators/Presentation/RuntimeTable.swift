@@ -1,34 +1,35 @@
 import Foundation
 import SimulatorsKit
 
-/// The table of installed runtimes shown by `simulators list`, followed by a total.
+/// A table of installed runtimes followed by a total. Numbered when the user picks from it.
 struct RuntimeTable {
     let runtimes: [InstalledRuntime]
+    var numbered = false
     var now: Date = .now
     var calendar: Calendar = .current
     var locale: Locale = .current
 
     func render() -> String {
         let lastUsed = LastUsedDescription(now: now, calendar: calendar)
-        let table = TextTable(
-            header: ["Runtime", "Build", "Arch", "Size", "Last used"],
-            rows: runtimes.map { runtime in
-                [
-                    runtime.name,
-                    runtime.build,
-                    architecture(of: runtime),
-                    runtime.sizeBytes.map(formattedSize) ?? "-",
-                    lastUsed.describe(runtime.lastUsedAt),
-                ]
-            }
-        )
+        let header = ["Runtime", "Build", "Arch", "Size", "Last used"]
+        let rows = runtimes.map { runtime in
+            [
+                runtime.name,
+                runtime.build,
+                architecture(of: runtime),
+                runtime.sizeBytes.map { $0.fileSize(locale: locale) } ?? "-",
+                lastUsed.describe(runtime.lastUsedAt),
+            ]
+        }
+        let table = numbered
+            ? TextTable(header: ["#"] + header, rows: rows.enumerated().map { ["\($0.offset + 1)"] + $0.element })
+            : TextTable(header: header, rows: rows)
         return table.render() + "\n\n" + total
     }
 
     private var total: String {
         let count = runtimes.count == 1 ? "1 runtime" : "\(runtimes.count) runtimes"
-        let bytes = runtimes.compactMap(\.sizeBytes).reduce(0, +)
-        return "\(count), \(formattedSize(bytes))"
+        return "\(count), \(Int64.totalSize(of: runtimes.map(\.sizeBytes)).fileSize(locale: locale))"
     }
 
     private func architecture(of runtime: InstalledRuntime) -> String {
@@ -36,9 +37,5 @@ struct RuntimeTable {
             return "universal"
         }
         return runtime.architectures.isEmpty ? "-" : runtime.architectures.joined(separator: ", ")
-    }
-
-    private func formattedSize(_ bytes: Int64) -> String {
-        bytes.formatted(.byteCount(style: .file).locale(locale))
     }
 }

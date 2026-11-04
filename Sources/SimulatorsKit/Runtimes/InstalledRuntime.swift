@@ -14,6 +14,13 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
     public let architectures: [String]
     public let sizeBytes: Int64?
     public let lastUsedAt: Date?
+    /// Whether `simctl` can delete it. Runtimes bundled inside an Xcode can't be.
+    public let isDeletable: Bool
+    /// Whether the runtime is mounted and usable (`simctl` reports its state as `Ready`).
+    public let isReady: Bool
+    /// Where the runtime's files are: a disk image, or a MobileAsset folder in
+    /// `/System/Library/AssetsV2`.
+    public let path: String?
 
     public init(
         identifier: String,
@@ -23,7 +30,10 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         build: String,
         architectures: [String],
         sizeBytes: Int64?,
-        lastUsedAt: Date?
+        lastUsedAt: Date?,
+        isDeletable: Bool = true,
+        isReady: Bool = true,
+        path: String? = nil
     ) {
         self.identifier = identifier
         self.runtimeIdentifier = runtimeIdentifier
@@ -33,6 +43,9 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         self.architectures = architectures
         self.sizeBytes = sizeBytes
         self.lastUsedAt = lastUsedAt
+        self.isDeletable = isDeletable
+        self.isReady = isReady
+        self.path = path
     }
 
     public init(from decoder: any Decoder) throws {
@@ -45,6 +58,10 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         architectures = try container.decodeIfPresent([String].self, forKey: .supportedArchitectures) ?? []
         sizeBytes = try container.decodeIfPresent(Int64.self, forKey: .sizeBytes)
         lastUsedAt = try container.decodeIfPresent(Date.self, forKey: .lastUsedAt)
+        // Treat a missing flag as "not deletable": the safe default for a tool that deletes things.
+        isDeletable = try container.decodeIfPresent(Bool.self, forKey: .deletable) ?? false
+        isReady = try container.decodeIfPresent(String.self, forKey: .state) == "Ready"
+        path = try container.decodeIfPresent(String.self, forKey: .path)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -56,5 +73,8 @@ public struct InstalledRuntime: Equatable, Sendable, Decodable {
         case supportedArchitectures
         case sizeBytes
         case lastUsedAt
+        case deletable
+        case state
+        case path
     }
 }

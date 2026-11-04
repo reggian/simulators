@@ -9,13 +9,25 @@ public struct InstalledRuntimeService: Sendable {
     }
 
     /// Installed runtimes in listing order (see ``InstalledRuntime/isOrderedBefore(_:_:)``).
+    ///
+    /// Skips entries that lack required fields: `simctl` lists a runtime it's still registering
+    /// (for example after `scan-and-mount`) before it knows everything about it.
     public func installedRuntimes() async throws -> [InstalledRuntime] {
         let output = try await runner.run("/usr/bin/xcrun", ["simctl", "runtime", "list", "-j"])
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let runtimesByIdentifier = try decoder.decode([String: InstalledRuntime].self, from: output)
+        let entries = try decoder.decode([String: SkippingInvalid].self, from: output)
 
-        return runtimesByIdentifier.values.sorted(by: InstalledRuntime.isOrderedBefore)
+        return entries.values.compactMap(\.runtime).sorted(by: InstalledRuntime.isOrderedBefore)
+    }
+}
+
+/// A runtime entry, or `nil` when it can't be decoded.
+private struct SkippingInvalid: Decodable {
+    let runtime: InstalledRuntime?
+
+    init(from decoder: any Decoder) throws {
+        runtime = try? InstalledRuntime(from: decoder)
     }
 }

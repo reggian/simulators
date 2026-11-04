@@ -25,6 +25,8 @@ struct InstalledRuntimeServiceTests {
         #expect(runtimes.map(\.build) == [
             "21C62", "23F77", "24A94425", "24B8117", "24B91016s", "23T570", "24R362", "24S118",
         ])
+        #expect(runtimes.map(\.isReady) == Array(repeating: true, count: 8))
+        #expect(runtimes.first?.path == "/Library/Developer/CoreSimulator/Images/0C734C3C-5798-4F82-B304-BCEABD2DD03C.dmg")
     }
 
     @Test("Decodes a runtime with optional fields missing and an unknown platform")
@@ -48,6 +50,24 @@ struct InstalledRuntimeServiceTests {
         #expect(runtime.architectures.isEmpty)
         #expect(runtime.sizeBytes == nil)
         #expect(runtime.lastUsedAt == nil)
+        #expect(!runtime.isReady)
+        #expect(runtime.path == nil)
+    }
+
+    @Test("Skips a runtime simctl is still registering instead of failing")
+    func skipsIncompleteRuntime() async throws {
+        let json = """
+        {
+          "A": { "identifier": "A", "runtimeIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-17-2",
+                 "platformIdentifier": "com.apple.platform.iphonesimulator", "version": "17.2", "build": "21C62" },
+          "B": { "identifier": "B", "state": "Mounting" }
+        }
+        """
+        let sut = InstalledRuntimeService(runner: StubCommandRunner(output: Data(json.utf8)))
+
+        let runtimes = try await sut.installedRuntimes()
+
+        #expect(runtimes.map(\.identifier) == ["A"])
     }
 
     private func fixture(_ name: String) throws -> Data {
